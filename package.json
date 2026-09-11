@@ -4,6 +4,7 @@
   "description": "Nexora - Visual Communication & Brand Execution",
   "main": "server.js",
   "scripts": {
+    "build": "node scripts/build-site.cjs",
     "start": "node server.js",
     "preview": "node -e \"process.env.PORT='3100'; require('./server')\"",
     "dev": "nodemon server.js"
