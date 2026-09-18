@@ -1,0 +1,264 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <nav class="navbar navbar-expand-lg fixed-top" id="mainNavbar">
+        <div class="container-fluid">
+          <!-- Logo -->
+          <a class="navbar-brand" href="index.html">
+            <div class="logo">
+              <img src="images/logo_nexora.webp" alt="Nexora Logo" />
+            </div>
+          </a>
+          <!-- Mobile Toggle -->
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <!-- Navigation -->
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <!-- Center Links -->
+            <ul class="navbar-nav mx-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="index.html">Home</a>
+              </li>
+              <li class="nav-item dropdown">
+                <button
+                  class="nav-link dropdown-toggle"
+                  type="button"
+                  id="aboutDropdown"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  About Us
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="aboutDropdown">
+                  <li>
+                    <a class="dropdown-item" href="index.html#about"
+                      >About Us</a
+                    >
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="index.html#industry"
+                      >Industry Focus</a
+                    >
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="index.html#process"
+                      >Our Process</a
+                    >
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="index.html#why"
+                      >Why Nexora</a
+                    >
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="index.html#vision"
+                      >Our Vision</a
+                    >
+                  </li>
+                </ul>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="services.html">Services</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="work.html">Our Work</a>
+              </li>
+              <li class="nav-item">
+                <a
+                  class="nav-link active"
+                  aria-current="page"
+                  href="reviews.html"
+                  >Reviews</a
+                >
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="contact.html">Contact</a>
+              </li>
+            </ul>
+            <!-- Right Quote Button -->
+            <div class="quote-btn">
+              <a href="contact.html">
+                Get a Quote
+                <i class="fa-solid fa-arrow-right-long"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+    <main id="main-content">
+      <section class="page-intro">
+        <div class="container">
+         <div class="center-heading">
+            <p class="eyebrow">YOUR EXPERIENCE MATTERS</p>
+            <h2>Share Your <span>Experience.</span></h2>
+            <p>Worked with Nexora? Tell us how it went.</p>
+          </div>
+        </div>
+      </section>
+      <section class="reviews section" id="reviews">
+        <div class="container">
+          
+          <div class="reviews-layout">
+            <div>
+              <h3 class="reviews-summary" id="reviewsSummary">
+                Client reviews
+              </h3>
+              <p id="reviewsLoading" role="status">Loading reviews…</p>
+              <div
+                class="reviews-list"
+                id="reviewsList"
+                aria-label="Client reviews"
+              ></div>
+              <button class="btn btn-gold" id="reviewsRetry" type="button" hidden>
+                Retry loading reviews
+              </button>
+            </div>
+            <form class="review-form" id="reviewForm">
+              <h3>Write a review</h3>
+              <label for="reviewName">Your name</label>
+              <input
+                id="reviewName"
+                name="name"
+                autocomplete="name"
+                maxlength="60"
+                required
+              />
+              <fieldset class="review-rating">
+                <legend>Your rating</legend>
+                <div class="rating-options">
+                  <label
+                    ><input
+                      type="radio"
+                      name="rating"
+                      value="1"
+                      required
+                    /><span>★</span><small>1</small></label
+                  >
+                  <label
+                    ><input type="radio" name="rating" value="2" /><span>★</span
+                    ><small>2</small></label
+                  >
+                  <label
+                    ><input type="radio" name="rating" value="3" /><span>★</span
+                    ><small>3</small></label
+                  >
+                  <label
+                    ><input type="radio" name="rating" value="4" /><span>★</span
+                    ><small>4</small></label
+                  >
+                  <label
+                    ><input type="radio" name="rating" value="5" /><span>★</span
+                    ><small>5</small></label
+                  >
+                </div>
+              </fieldset>
+              <label for="reviewMessage">Your review</label>
+              <textarea
+                id="reviewMessage"
+                name="message"
+                rows="4"
+                minlength="10"
+                maxlength="1000"
+                required
+                placeholder="Tell us about your experience (at least 10 characters)"
+              ></textarea>
+              <p class="review-note">
+                Your name, rating and review will be published immediately.
+              </p>
+              <button class="btn btn-gold" type="submit">
+                Post Review <span aria-hidden="true">→</span>
+              </button>
+              <p id="reviewStatus" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section class="page-cta">
+        <div class="container">
+          <div>
+            <p class="eyebrow">LET’S MAKE IT HAPPEN</p>
+            <h2>Your next chapter starts here.</h2>
+          </div>
+          <a class="btn btn-gold" href="contact.html"
+            >Start a Conversation &rarr;</a
+          >
+        </div>
+      </section>
+    </main>
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div>
+          <a class="brand" href="index.html">
+            <img
+              src="images/logo_nexora.webp"
+              alt=""
+              height="100px"
+              width="200px"
+            />
+          </a>
+          <p>One Partner. Every Marketing Need.</p>
+        </div>
+        <div>
+          <h4>Company</h4>
+          <a href="index.html#about">About Us</a>
+          <a href="index.html#why">Why Nexora</a>
+          <a href="index.html#process">Our Process</a>
+          <a href="reviews.html">Client Reviews</a>
+        </div>
+        <div>
+          <h4>Services</h4>
+          <a href="services.html">Branding & Creative</a>
+          <a href="services.html">Real Estate Marketing</a>
+          <a href="services.html">Jewellery Marketing</a>
+          <a href="services.html">Digital & Website</a>
+        </div>
+        <div>
+          <h4>Contact</h4>
+          <a href="mailto:nexoraadvertising01@gmail.com"
+            >nexoraadvertising01@gmail.com</a
+          >
+          <a href="#" id="footerWhatsapp">WhatsApp</a>
+          <a href="contact.html">Get a Quote</a>
+          <div class="socials">
+            <a
+              href="https://www.instagram.com/nexora_advertising_/"
+              aria-label="Instagram"
+              ><i class="fa-brands fa-instagram"></i
+            ></a>
+            <a href="#" aria-label="Facebook"
+              ><i class="fa-brands fa-facebook-f"></i
+            ></a>
+            <a href="#" aria-label="LinkedIn"
+              ><i class="fa-brands fa-linkedin-in"></i
+            ></a>
+          </div>
+        </div>
+      </div>
+      <div class="container copyright">
+        © <span id="year"></span> Nexora. All rights reserved.
+      </div>
+    </footer>
+    <button
+      class="floating-whatsapp"
+      id="floatingWhatsapp"
+      aria-label="Chat on WhatsApp"
+    >
+      <i class="fa-brands fa-whatsapp"></i>
+    </button>
+
+    <button class="floating-email" id="floatingEmail" aria-label="Email us">
+      <i class="fa-solid fa-envelope"></i>
+    </button>
+
+    <button class="back-to-top" id="backToTop" aria-label="Back to top">
+      <i class="fa-solid fa-arrow-up"></i>
+    </button>

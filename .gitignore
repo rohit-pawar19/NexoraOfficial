@@ -3,6 +3,7 @@
 
 # Node modules
 node_modules/
+.media-tools/
 dist/
 .netlify/
 

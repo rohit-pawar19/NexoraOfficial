@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/reviews', require('./reviews')(path.join(__dirname, 'data', 'reviews.json')));
 app.use('/data', (req, res) => res.sendStatus(404));
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // SMTP Transporter Configuration
 const transporter = nodemailer.createTransport({
@@ -84,7 +84,7 @@ app.post('/api/send-enquiry', async (req, res) => {
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Start server

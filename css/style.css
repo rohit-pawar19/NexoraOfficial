@@ -1,4 +1,4 @@
-/* Gold tones sampled from images/logo_nexora.png. */
+/* Gold tones sampled from images/logo_nexora.webp. */
 :root {
   --gold-text: rgb(201, 149, 46);
   --gold-heading: linear-gradient(
@@ -80,7 +80,7 @@ body {
 }
 /* Banner */
 .banner {
-  background-image: url("../images/banner.png");
+  background-image: url("../images/banner.webp");
   background-position: center;
   background-repeat: no-repeat;
   width: 100%;
@@ -1990,7 +1990,7 @@ h4 {
 
 .home-intro {
   padding: 165px 0 0;
-  background: #06123c url("../images/banner.png") center / cover no-repeat;
+  background: #06123c url("../images/banner.webp") center / cover no-repeat;
   color: #fff;
 }
 .home-intro-grid {
