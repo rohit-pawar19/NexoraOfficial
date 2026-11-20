@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createProcessStageModel, PROCESS_SCENES } from '../src/process/process-stage-models.js';
+
+test('Create keeps its name while its cinema rig assembles once and idles without resetting film', () => {
+  assert.equal(PROCESS_SCENES[2], 'Create');
+  const model = createProcessStageModel(2);
+  const rig = model.object.getObjectByName('create-cinema-rig');
+  const film = model.object.getObjectByName('cinema-curved-film');
+  const body = model.object.getObjectByName('cinema-body');
+  const optics = model.object.getObjectByName('cinema-convex-optics');
+  const blades = [];
+  model.object.traverse(part => { if (part.name.startsWith('cinema-iris-pivot-')) blades.push(part); });
+  assert.ok(rig && film && body && optics);
+  assert.equal(blades.length, 9);
+  assert.ok(optics.material.isMeshPhysicalMaterial && optics.material.transmission > .5);
+  model.update(0, 0);
+  assert.ok(body.position.length() > .1);
+  assert.ok(film.children.every(part => part.geometry.drawRange.count === 0));
+  model.update(1, 3);
+  assert.equal(body.position.length(), 0);
+  assert.ok(film.children.every(part => part.geometry.drawRange.count === part.geometry.index.count));
+  const bladeAngle = blades[0].rotation.z;
+  const filmRanges = film.children.map(part => part.geometry.drawRange.count);
+  model.update(1, 5);
+  assert.notEqual(blades[0].rotation.z, bladeAngle, 'iris retains mechanical idle motion');
+  assert.deepEqual(film.children.map(part => part.geometry.drawRange.count), filmRanges, 'film reveal must not restart while stopped');
+  assert.equal(body.position.length(), 0, 'body assembly must not restart during idle');
+  assert.ok(Math.abs(rig.position.y) <= .0121);
+  model.dispose();
+});

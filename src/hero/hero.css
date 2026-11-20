@@ -1,0 +1,37 @@
+/* Hero-only enhancement: the canvas is confined to the existing artwork column. */
+#home .logo-animation {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: clamp(280px, 31vw, 430px);
+  position: relative;
+  overflow: hidden;
+  contain: layout paint;
+  animation: none;
+}
+#home .logo-animation::before,
+#home .logo-animation::after { display: none; }
+#home .logo-animation > .logo-svg {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  transition: opacity .6s ease;
+}
+#home .logo-animation canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#home .ribbon-ready > .logo-svg { opacity: 0; visibility: hidden; }
+#home .logo-animation .draw-path { animation: none; stroke-dashoffset: 0; }
+#home .logo-animation .real-logo { animation: none; }
+#home .logo-animation .moving-light { display: none; }
+#home .home-intro-grid > :first-child { position: relative; z-index: 1; min-width: 0; }
+@media (max-width: 767.98px) {
+  #home .logo-animation { height: clamp(230px, 62vw, 340px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #home .logo-animation > .logo-svg { transition: none; }
+}

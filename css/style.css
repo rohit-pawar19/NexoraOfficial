@@ -1829,7 +1829,7 @@ img {
     scroll-behavior: smooth;
   }
   .hero-copy > * {
-    animation: nexora-enter 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: nexora-enter 0.75s var(--motion-ease-enter, cubic-bezier(.22, 1, .36, 1)) both;
   }
   .hero-copy > :nth-child(2) {
     animation-delay: 0.1s;
@@ -1844,13 +1844,13 @@ img {
     animation: none;
   }
   .logo-animation {
-    animation: nexora-enter 1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s backwards;
+    animation: nexora-enter 1s var(--motion-ease-enter, cubic-bezier(.22, 1, .36, 1)) 0.2s backwards;
   }
   #serviceModal.show {
     animation: nexora-backdrop 0.35s ease-out;
   }
   #serviceModal.show .modal-box {
-    animation: nexora-dialog 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    animation: nexora-dialog 0.5s var(--motion-ease-enter, cubic-bezier(.22, 1, .36, 1)) backwards;
     transform-origin: center;
   }
   #serviceModal.show .modal-box > :not(.modal-close) {
@@ -2211,6 +2211,13 @@ h4 {
   background: #ffffff12;
   color: #f8c830;
 }
+.navbar .services-dropdown .dropdown-divider {
+  border-color: #ffffff26;
+}
+.navbar .services-dropdown .dropdown-menu {
+  max-height: min(65dvh, 31rem);
+  overflow-y: auto;
+}
 @media (max-width: 991.98px) {
   .navbar .dropdown-toggle {
     width: 100%;
@@ -2219,6 +2226,12 @@ h4 {
   .navbar .dropdown-menu {
     box-shadow: none;
     margin-bottom: 8px;
+  }
+  .navbar .services-dropdown .dropdown-menu {
+    max-height: min(40dvh, 21rem);
+  }
+  .navbar .services-dropdown .dropdown-item {
+    white-space: normal;
   }
 }
 

@@ -1,0 +1,51 @@
+:root {
+  --motion-ease-enter: cubic-bezier(.22, 1, .36, 1);
+  --motion-ease-settle: cubic-bezier(.2, .75, .22, 1);
+  --motion-heading-time: 580ms;
+  --motion-feedback-time: 360ms;
+  --motion-gold-reflection: linear-gradient(90deg, transparent, #b28335 30%, #ffe5a6 62%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(.btn-gold, .quote-btn a, main .intro-link, main .portfolio-explore, main .card-link, main .contact-work-link) {
+    position: relative;
+  }
+
+  :is(.btn-gold, .quote-btn a, main .intro-link, main .portfolio-explore, main .card-link, main .contact-work-link)::after {
+    content: '';
+    position: absolute;
+    inset: auto 12% 3px;
+    height: 2px;
+    border-radius: 2px;
+    pointer-events: none;
+    background: var(--motion-gold-reflection);
+    opacity: 0;
+    transform: translateX(-16%) scaleX(.25);
+    transition: transform var(--motion-feedback-time) var(--motion-ease-settle),
+      opacity var(--motion-feedback-time) var(--motion-ease-settle);
+  }
+
+  :is(.btn-gold, .quote-btn a, main .intro-link, main .portfolio-explore, main .card-link, main .contact-work-link):focus-visible::after {
+    opacity: .82;
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  :is(.btn.btn-gold, .quote-btn a) {
+    translate: var(--motion-x, 0px) var(--motion-y, 0px);
+    transition: translate var(--motion-feedback-time) var(--motion-ease-enter),
+      box-shadow var(--motion-feedback-time) var(--motion-ease-settle),
+      background-color var(--motion-feedback-time) var(--motion-ease-settle),
+      border-color var(--motion-feedback-time) var(--motion-ease-settle);
+  }
+
+  :is(.btn.btn-gold:not(:disabled), .quote-btn a):hover {
+    transform: none;
+  }
+
+  :is(.btn-gold, .quote-btn a, main .intro-link, main .portfolio-explore, main .card-link, main .contact-work-link):hover:not(:disabled)::after {
+    opacity: .82;
+    transform: translateX(0) scaleX(1);
+  }
+}

@@ -1,0 +1,88 @@
+.portfolio-clients.client-motion {
+  --client-gap: 18px;
+}
+
+.client-motion .client-logo-viewport {
+  overflow: hidden;
+  padding-block: 14px;
+  margin-block: -14px;
+  touch-action: pan-y pinch-zoom;
+}
+
+.client-motion .client-logo-track {
+  position: relative;
+  display: flex;
+  width: calc(200% + 2 * var(--client-gap));
+  will-change: transform;
+  perspective: 1000px;
+}
+
+.client-motion .portfolio-logo-grid {
+  box-sizing: border-box;
+  flex: 0 0 50%;
+  min-width: 0;
+  padding-right: var(--client-gap);
+  gap: var(--client-gap);
+}
+
+.client-motion:not(.client-entered) .portfolio-logo-grid {
+  opacity: 0;
+}
+
+.client-motion:not(.client-loop-ready) .portfolio-logo-grid[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.client-motion .client-logo-viewport:focus-visible {
+  outline: 2px solid #95702d;
+  outline-offset: 3px;
+}
+
+.client-motion h2 {
+  position: relative;
+}
+
+.client-motion h2::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -7px;
+  width: min(112px, 30%);
+  height: 2px;
+  margin-inline: auto;
+  background: linear-gradient(90deg, #966621, #e4c173 65%, #bc914800);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 760ms 120ms var(--motion-ease-settle);
+}
+
+.client-entered h2::after {
+  transform: scaleX(1);
+}
+
+.client-motion .portfolio-logo {
+  position: relative;
+  transform-style: preserve-3d;
+  perspective: 800px;
+  box-shadow: 0 2px 4px #12224a09, 0 7px 14px #12224a0a;
+}
+
+.client-motion .portfolio-logo img {
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 420ms var(--motion-ease-settle);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .client-motion .portfolio-logo:hover {
+    z-index: 1;
+    box-shadow: 0 3px 6px #ae854321, 0 12px 22px #12224a17;
+  }
+
+  .client-motion .portfolio-logo:hover img {
+    transform: translate3d(0, -3px, 14px);
+  }
+}
+
+@media (max-width: 767px) {
+  .portfolio-clients.client-motion { --client-gap: 12px; }
+}

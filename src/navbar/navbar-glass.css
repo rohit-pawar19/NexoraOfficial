@@ -1,0 +1,48 @@
+.site-header #mainNavbar {
+  --glass: 0;
+  --reflection: -20%;
+  --reflection-opacity: 0;
+  transition: none;
+  background: rgba(6, 18, 60, calc(var(--glass) * .84));
+  border-bottom: 1px solid rgba(224, 207, 158, calc(var(--glass) * .2));
+  backdrop-filter: blur(calc(var(--glass) * 16px)) saturate(calc(1 + var(--glass) * .22));
+  -webkit-backdrop-filter: blur(calc(var(--glass) * 16px)) saturate(calc(1 + var(--glass) * .22));
+  box-shadow: 0 12px 32px rgba(0, 6, 28, calc(var(--glass) * .2)),
+    inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass) * .09));
+}
+.site-header #mainNavbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--reflection-opacity);
+  background: linear-gradient(110deg,
+    transparent calc(var(--reflection) - 14%),
+    rgba(235, 242, 255, .5) var(--reflection),
+    transparent calc(var(--reflection) + 14%));
+}
+#mainNavbar .nav-gold-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #79500b, #d4af37 32%, #fff2b8 52%, #d4af37 76%, #b8860b);
+}
+@media (min-width: 992px) {
+  #mainNavbar.glass-enhanced .navbar-nav .nav-link.active::after { display: none; }
+}
+@media (max-width: 991.98px) {
+  #mainNavbar .nav-gold-indicator { display: none; }
+  /* Keep the existing collapse panel opaque enough to read at the transparent top. */
+  #mainNavbar .navbar-collapse { background: rgba(6, 18, 60, .97); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header #mainNavbar { background: rgba(6, 18, 60, calc(var(--glass) * .96)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header #mainNavbar::before { display: none; }
+}

@@ -1,0 +1,106 @@
+.services-page .service-card.service-depth {
+  transform: none;
+  transform-style: preserve-3d;
+  overflow: visible;
+  transition: border-color .2s, box-shadow .2s;
+  cursor: pointer;
+}
+.services-page .service-card.service-depth:hover { transform: none; }
+.services-page .service-card.service-depth.is-exploring {
+  border-color: #c6a25c;
+  box-shadow: 0 22px 36px -18px #10204642, 0 5px 14px #79500b10, inset 0 1px 0 #f6d66b22;
+}
+.services-page .service-card.service-depth::after {
+  z-index: 3;
+  background: radial-gradient(210px circle at var(--light-x, 50%) var(--light-y, 40%),
+    rgba(246, 214, 107, .14), transparent 75%);
+}
+.services-page .service-card.service-depth.is-exploring::after { opacity: 1; }
+.services-page .service-depth .service-image { transform-style: preserve-3d; }
+.service-miniature {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  perspective: 650px;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 35% 20%, #1d3555, #06123cf2 80%);
+  box-shadow: inset 0 1px 0 #fff2b824, 0 3px 10px #06123c20;
+  overflow: hidden;
+}
+.service-miniature::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: var(--mini-sweep-opacity, 0);
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent calc(var(--mini-sweep, -30%) - 15%),
+    #fff2b8 var(--mini-sweep, -30%), transparent calc(var(--mini-sweep, -30%) + 15%));
+}
+.service-miniature .service-studio-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.service-miniature.has-studio-model .mini-object { visibility: hidden; }
+.service-miniature .mini-object {
+  position: relative;
+  width: 110px;
+  height: 86px;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 12px 10px #00000030);
+}
+.service-miniature i {
+  display: block;
+  position: absolute;
+  border: 1px solid #e2c675;
+  background: linear-gradient(135deg, #fff2b8, #d4af37 35%, #8d651c 75%, #f6d66b);
+  box-sizing: border-box;
+}
+/* Brand components meet on a single shared plane. */
+.mini-brand i { width: 35px; height: 35px; top: 25px; left: 38px; }
+.mini-brand i:nth-child(1) { border-radius: 50%; }
+.mini-brand i:nth-child(2) { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.mini-brand i:nth-child(3) { background: #0b1c48; border: 3px solid #f6d66b; transform: rotate(45deg); }
+/* A barrel, two optical rings, and a six-blade iris. */
+.mini-lens .lens-body { width: 78px; height: 78px; left: 16px; top: 4px; border-radius: 50%; background: repeating-radial-gradient(circle, #192b47 0 3px, #a7833f 4px, #06123c 6px 10px); }
+.mini-lens .lens-ring { inset: 8px; border-radius: 50%; background: conic-gradient(#d4af37, #06123c, #fff2b8, #79500b, #d4af37); }
+.mini-lens .lens-iris { inset: 19px; border: 0; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 35% 35%, #77a2bb, #092137 40%, #020a1c); }
+.mini-lens .lens-blade { width: 24px; height: 30px; left: 8px; top: -9px; transform-origin: 50% 28px; background: linear-gradient(120deg, #b89b57, #263c54); border-color: #d5bc7040; }
+/* A small extruded elevation grows from its gridded drawing. */
+.mini-building .blueprint { width: 108px; height: 65px; bottom: -5px; background: repeating-linear-gradient(0deg, transparent 0 10px, #d4af373b 11px), repeating-linear-gradient(90deg, #15324f 0 10px, #d4af373b 11px); transform: rotateX(60deg) rotateZ(-14deg); }
+.mini-building .tower { width: 42px; height: 65px; left: 32px; bottom: 13px; transform-origin: bottom; background: repeating-linear-gradient(0deg, transparent 0 10px, #e4c776 11px 12px), repeating-linear-gradient(90deg, #183048 0 11px, #e4c776 12px 13px); }
+.mini-building .tower-side { width: 20px; height: 65px; left: 74px; bottom: 13px; transform: skewY(-25deg); transform-origin: left bottom; background: repeating-linear-gradient(0deg, #9c7b32 0 10px, #f6d66b 11px 12px); }
+/* A faceted static fallback remains available while the optical model loads. */
+.mini-gem .gem-fallback { width: 76px; height: 70px; top: 8px; left: 17px; clip-path: polygon(23% 0, 77% 0, 100% 30%, 50% 100%, 0 30%); background: conic-gradient(from 35deg at 50% 30%, #fff8df, #9b7828, #fff2b8, #d4af37, #638299, #fff2b8); }
+.mini-gem canvas { position: absolute; width: 160px; height: 130px; left: -25px; top: -22px; }
+.mini-gem.has-optical-model .gem-fallback { visibility: hidden; }
+/* Three sheets hinge, then settle into an aligned print stack. */
+.mini-paper i { width: 68px; height: 52px; left: 21px; top: 17px; transform-origin: 0 50%; background: linear-gradient(135deg, #fff8e3, #e8d9b4); border-color: #c6a25c; }
+.mini-paper i::after { content: ''; position: absolute; inset: 12px; border-top: 2px solid #b8860b; border-bottom: 1px solid #b8860b65; }
+/* Linked nodes use a finite drawing sequence, rather than a particle field. */
+.mini-network .network-link { height: 1px; width: 68px; left: 21px; top: 42px; transform-origin: left center; border: 0; }
+.mini-network .network-link:nth-child(2) { transform: rotate(55deg); width: 52px; top: 15px; left: 24px; }
+.mini-network .network-link:nth-child(3) { transform: rotate(-55deg); width: 52px; top: 58px; left: 24px; }
+.mini-network .network-node { width: 13px; height: 13px; border-radius: 50%; box-shadow: 0 0 8px #f6d66b18; }
+.mini-network .network-node:nth-of-type(4) { left: 15px; top: 36px; }
+.mini-network .network-node:nth-of-type(5) { left: 80px; top: 36px; }
+.mini-network .network-node:nth-of-type(6) { left: 35px; top: 8px; }
+.mini-network .network-node:nth-of-type(7) { left: 35px; top: 63px; }
+/* Browser chrome and content tiles occupy different depths before assembly. */
+.mini-browser .browser-frame { inset: 8px 5px; border-radius: 5px; background: #0d2441; }
+.mini-browser .browser-bar { left: 5px; right: 5px; top: 8px; height: 12px; border-radius: 5px 5px 0 0; }
+.mini-browser .browser-hero { left: 15px; right: 15px; top: 29px; height: 17px; background: linear-gradient(120deg, #79500b, #f6d66b); }
+.mini-browser .browser-tile { top: 53px; left: 15px; width: 34px; height: 15px; background: #d4af3720; }
+.mini-browser .browser-tile:last-child { left: 61px; }
+/* A proscenium opens onto a low stage and a restrained cone of light. */
+.mini-stage .stage-floor { left: 5px; right: 5px; bottom: 4px; height: 22px; transform: rotateX(55deg); }
+.mini-stage .stage-wing { top: 10px; width: 30px; height: 55px; background: linear-gradient(90deg, #79500b, #d4af37); }
+.mini-stage .stage-wing:nth-child(2) { left: 12px; transform-origin: left; }
+.mini-stage .stage-wing:nth-child(3) { right: 12px; transform-origin: right; }
+.mini-stage .stage-light { top: -6px; left: 20px; width: 70px; height: 80px; clip-path: polygon(47% 0, 53% 0, 100% 100%, 0 100%); border: 0; background: linear-gradient(#fff2b84d, #f6d66b05); transform-origin: top center; }
+@media (prefers-reduced-motion: reduce) {
+  .services-page .service-card.service-depth { transform: none !important; }
+  .service-miniature { display: none; }
+}

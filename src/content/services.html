@@ -65,13 +65,23 @@
                   </li>
                 </ul>
               </li>
-              <li class="nav-item">
-                <a
-                  class="nav-link active"
-                  aria-current="page"
-                  href="services.html"
-                  >Services</a
-                >
+              <li class="nav-item dropdown services-dropdown">
+                <button class="nav-link dropdown-toggle active" type="button"
+                  id="servicesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  Services
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="servicesDropdown">
+                  <li><a class="dropdown-item" href="services.html" aria-current="page">All Services</a></li>
+                  <li><hr class="dropdown-divider" /></li>
+                  <li><a class="dropdown-item" href="services.html#branding-creative">Branding &amp; Creative</a></li>
+                  <li><a class="dropdown-item" href="services.html#photography-videography">Photography &amp; Videography</a></li>
+                  <li><a class="dropdown-item" href="services.html#real-estate-marketing">Real Estate Marketing</a></li>
+                  <li><a class="dropdown-item" href="services.html#jewellery-brand-marketing">Jewellery Brand Marketing</a></li>
+                  <li><a class="dropdown-item" href="services.html#printing-production">Printing &amp; Production</a></li>
+                  <li><a class="dropdown-item" href="services.html#digital-marketing">Digital Marketing</a></li>
+                  <li><a class="dropdown-item" href="services.html#website-services">Website Services</a></li>
+                  <li><a class="dropdown-item" href="services.html#event-launch-marketing">Event &amp; Launch Marketing</a></li>
+                </ul>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="work.html">Our Work</a>
@@ -119,7 +129,7 @@
             </p>
           </div>
           <div class="service-grid">
-            <article class="service-card" data-service="Branding & Creative">
+            <article class="service-card" id="branding-creative" data-service="Branding & Creative">
               <div class="service-image">
                 <img
                   src="images/services/service1.webp"
@@ -139,7 +149,7 @@
               <button class="card-link">View Details →</button>
             </article>
             <article
-              class="service-card"
+              class="service-card" id="photography-videography"
               data-service="Photography & Videography"
             >
               <div class="service-image">
@@ -161,7 +171,7 @@
               <button class="card-link">View Details →</button>
             </article>
             <article
-              class="service-card featured"
+              class="service-card featured" id="real-estate-marketing"
               data-service="Real Estate & Builder Marketing"
             >
               <div class="service-image">
@@ -183,7 +193,7 @@
               <button class="card-link">View Details →</button>
             </article>
             <article
-              class="service-card"
+              class="service-card" id="jewellery-brand-marketing"
               data-service="Jewellery Brand Marketing"
             >
               <div class="service-image">
@@ -204,7 +214,7 @@
               </p>
               <button class="card-link">View Details →</button>
             </article>
-            <article class="service-card" data-service="Printing & Production">
+            <article class="service-card" id="printing-production" data-service="Printing & Production">
               <div class="service-image">
                 <img
                   src="images/services/service5.webp"
@@ -224,7 +234,7 @@
               <button class="card-link">View Details →</button>
             </article>
 
-            <article class="service-card" data-service="Digital Marketing">
+            <article class="service-card" id="digital-marketing" data-service="Digital Marketing">
               <div class="service-image">
                 <img
                   src="images/services/service6.webp"
@@ -244,7 +254,7 @@
               <button class="card-link">View Details →</button>
             </article>
 
-            <article class="service-card" data-service="Website Services">
+            <article class="service-card" id="website-services" data-service="Website Services">
               <div class="service-image">
                 <img
                   src="images/services/service7.webp"
@@ -264,7 +274,7 @@
               <button class="card-link">View Details →</button>
             </article>
             <article
-              class="service-card"
+              class="service-card" id="event-launch-marketing"
               data-service="Event & Launch Marketing"
             >
               <div class="service-image">

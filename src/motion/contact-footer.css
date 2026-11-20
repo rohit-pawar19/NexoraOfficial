@@ -1,0 +1,49 @@
+﻿#contact .cta-grid { perspective: 1250px; }
+#contact .contact-field :is(input, select, textarea):focus {
+  border-color: #9c742e;
+  outline: 2px solid #9c742e;
+  outline-offset: 2px;
+  background: linear-gradient(125deg, #fffaf0, #fff 72%);
+  box-shadow: 0 5px 16px #182e5517;
+}
+#contact .contact-actions button {
+  background-image: radial-gradient(ellipse at var(--button-shine, -18%) 50%, #fff1be8c 0, transparent 40%);
+}
+#contact .contact-actions button:focus-visible {
+  outline: 2px solid #9c742e;
+  outline-offset: 3px;
+}
+.footer .footer-grid .brand { position: relative; perspective: 900px; isolation: isolate; }
+.footer .footer-grid .brand::before,
+.footer .footer-grid .brand::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.footer .footer-grid .brand::before {
+  z-index: -1;
+  background: radial-gradient(ellipse closest-side, #e0b97130, transparent);
+  opacity: var(--logo-spot, 0);
+}
+.footer .footer-grid .brand::after {
+  mask: url('/images/logo_nexora.webp') center / 100% 100% no-repeat;
+  mix-blend-mode: screen;
+  background: radial-gradient(ellipse 12% 75% at var(--logo-edge, -22%) 50%, #fadd86a0, transparent);
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  #contact .contact-field :is(input, select, textarea) {
+    transition: translate 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  }
+  #contact .contact-field :is(input, select, textarea):focus { translate: 0 -2px; }
+  #contact .contact-actions button {
+    translate: var(--motion-x, 0px) var(--motion-y, 0px);
+    transition: translate 220ms ease, scale 160ms ease, box-shadow 240ms ease;
+  }
+  #contact .contact-actions button:hover {
+    --button-shine: 55%;
+    translate: var(--motion-x, 0px) calc(var(--motion-y, 0px) - 2px);
+    box-shadow: 0 7px 16px #17243d25;
+  }
+  #contact .contact-actions button:active { scale: .98; }
+}

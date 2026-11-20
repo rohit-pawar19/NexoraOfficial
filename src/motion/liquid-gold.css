@@ -1,0 +1,13 @@
+﻿.has-liquid-gold { position: relative; }
+.liquid-gold {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 50%;
+  width: min(100%, 1140px);
+  height: clamp(14px, 2.7vw, 31px);
+  display: block;
+  overflow: hidden;
+  transform: translateX(-50%);
+  pointer-events: none;
+}

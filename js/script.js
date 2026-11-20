@@ -3,12 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const year = document.getElementById("year");
   if (year) year.textContent = new Date().getFullYear();
 
-  // Navbar: add the same polished scrolled state as the Nexora theme.
-  const navbar = document.querySelector(".navbar");
-  window.addEventListener("scroll", () => {
-    if (navbar) navbar.classList.toggle("scrolled", window.scrollY > 30);
-  });
-
   // Close Bootstrap mobile menu after navigation.
   document.querySelectorAll(".navbar a[href]").forEach((link) => {
     link.addEventListener("click", () => {
@@ -169,30 +163,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("modalQuote")?.addEventListener("click", closeModal);
 
-  const mainNavbar = document.getElementById("mainNavbar");
   const backToTop = document.getElementById("backToTop");
+  const sections = [...document.querySelectorAll("section[id]")];
+  const navLinks = [...document.querySelectorAll('.nav-link[href^="#"]')];
+  let navigationFrame = 0;
+  let activeSection;
 
-  window.addEventListener("scroll", () => {
-    mainNavbar?.classList.toggle("scrolled", window.scrollY > 40);
-    backToTop?.classList.toggle("show", window.scrollY > 500);
-
-    const sections = document.querySelectorAll("section[id]");
-    const navLinks = document.querySelectorAll(".nav-link");
-
+  function updateScrollNavigation() {
+    navigationFrame = 0;
+    const scrollTop = window.scrollY;
+    backToTop?.classList.toggle("show", scrollTop > 500);
+    if (!navLinks.length) return;
     let current = "";
     sections.forEach((section) => {
-      if (window.scrollY >= section.offsetTop - 160) current = section.id;
+      if (scrollTop >= section.offsetTop - 160) current = section.id;
     });
-
+    if (current === activeSection) return;
+    activeSection = current;
     navLinks.forEach((link) => {
-      if (link.getAttribute("href")?.startsWith("#")) {
-        link.classList.toggle(
-          "active",
-          link.getAttribute("href") === `#${current}`,
-        );
-      }
+      link.classList.toggle("active", link.getAttribute("href") === `#${current}`);
     });
-  });
+  }
+
+  window.addEventListener("scroll", () => {
+    if (!navigationFrame) navigationFrame = requestAnimationFrame(updateScrollNavigation);
+  }, { passive: true });
+  if (window.scrollY > 0) updateScrollNavigation();
 
   backToTop?.addEventListener("click", () => {
     window.scrollTo({
@@ -341,6 +337,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
 
   const runningAnimations = new Map();
+  const timing = getComputedStyle(document.documentElement);
+  const easing = timing.getPropertyValue("--motion-ease-enter").trim() || "ease-out";
+  const duration = parseFloat(timing.getPropertyValue("--motion-heading-time")) || 580;
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -352,13 +351,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const siblings = Array.from(element.parentElement.children);
         const animation = element.animate(
           [
-            { opacity: 0, transform: "translateY(24px)" },
-            { opacity: 1, transform: "translateY(0)" },
+            { opacity: 0.55, translate: "0 12px" },
+            { opacity: 1, translate: "0 0" },
           ],
           {
-            duration: 600,
-            delay: Math.min(siblings.indexOf(element) % 4, 3) * 70,
-            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+            duration,
+            delay: Math.min(siblings.indexOf(element) % 4, 3) * 45,
+            easing,
             fill: "backwards",
           },
         );
@@ -378,19 +377,21 @@ document.addEventListener("DOMContentLoaded", () => {
         ".about-image-placeholder",
         ".about-content",
         ".stats > div",
-        ".section-heading",
-        ".center-heading",
         ".service-card",
-        ".industry-card",
         ".process-item",
         ".why-grid > div",
         ".values-grid > div",
-        ".cta-grid > div",
-        ".quote-form",
         ".footer-grid > div",
       ].join(", "),
     )
-    .forEach((element) => observer.observe(element));
+    .forEach((element) => {
+      // The About editorial reveal owns its text and statistics transforms.
+      if (element.closest('#about') && element.matches('.about-content, .stats > div')) return;
+      if (element.classList.contains('service-depth')) return;
+      if (element.matches('.process-journey .process-item')) return;
+      if (element.matches('.why-typography .why-grid > div')) return;
+      observer.observe(element);
+    });
 
   // Keyboard focus should never wait for a visual entrance to finish.
   document.addEventListener("focusin", (event) => {
@@ -413,6 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)",
   );
   document.querySelectorAll(".service-card").forEach((card) => {
+    if (card.classList.contains('service-depth')) return;
     let frame = 0;
     let pointerX = 0;
     let pointerY = 0;

@@ -1,0 +1,60 @@
+#why.why-typography { overflow-x: clip; }
+#why.why-typography .why-grid { position: relative; perspective: 1100px; }
+#why.why-typography .why-grid > div:first-child { perspective: 1100px; }
+#why.why-typography .why-grid > div:first-child h2 { position: relative; transform-origin: left center; }
+#why.why-typography .why-grid > div:first-child h2::after {
+  content: ''; position: absolute; bottom: -8px; left: 0; width: 58px; height: 1px;
+  background: linear-gradient(90deg, #79500b, #d4af37, #fff2b8);
+  transform: scaleX(var(--intro-line, 0)); transform-origin: left;
+}
+#why.why-typography .why-list { perspective: 1000px; }
+#why.why-typography .why-type-row { position: relative; min-width: 0; transform-style: preserve-3d; }
+#why.why-typography .why-type-hover {
+  display: flex; width: 100%; min-width: 0; gap: 14px;
+  position: relative; transform-style: preserve-3d; perspective: 900px;
+}
+#why.why-typography .why-type-hover::before {
+  content: ''; position: absolute; inset: -11px -4px; z-index: -1; pointer-events: none;
+  background: linear-gradient(120deg, #d4af370c, transparent 85%);
+  box-shadow: 0 8px 15px -12px #00000050;
+  opacity: 0; transition: opacity .35s;
+}
+#why.why-typography .why-type-row.is-type-hovered .why-type-hover::before { opacity: 1; }
+#why.why-typography .why-type-number-layer { display: block; flex: 0 0 auto; transform-style: preserve-3d; }
+#why.why-typography .why-type-title-layer { display: block; flex: 1 1 auto; min-width: 0; transform-style: preserve-3d; }
+#why.why-typography .why-type-title {
+  --type-shine: -20%; --type-line: 0;
+  display: block; position: relative;
+  color: #d8def1;
+  background: linear-gradient(110deg, #d8def1 calc(var(--type-shine) - 12%), #fff2b8 var(--type-shine), #d8def1 calc(var(--type-shine) + 12%));
+  background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: 0 1px 0 #00000012;
+}
+#why.why-typography .why-type-keyword { color: #d8def1; -webkit-text-fill-color: currentColor; transition: color .4s; }
+#why.why-typography .is-type-hovered .why-type-keyword { color: #e7cc85; }
+#why.why-typography .why-type-title::after {
+  content: ''; position: absolute; left: 0; bottom: -5px; width: 46px; max-width: 80%; height: 1px;
+  background: linear-gradient(90deg, #79500b, #d4af37 45%, #fff2b8);
+  transform: scaleX(var(--type-line)); transform-origin: left; pointer-events: none;
+}
+#why.why-typography .why-type-row:focus-visible { outline: 1px solid #d4af378c; outline-offset: 5px; border-radius: 2px; }
+#why.why-typography .why-type-unity {
+  position: absolute; top: calc(100% + clamp(20px, 3vw, 34px)); inset-inline: 12px;
+  margin: 0; font: inherit; font-size: clamp(18px, 2vw, 27px); line-height: 1.35; letter-spacing: .025em;
+  text-align: center; pointer-events: none; perspective: 900px;
+}
+#why.why-typography .why-type-unity > span {
+  --unity-shine: -20%; display: inline-block; white-space: nowrap; font: inherit; color: #d4af37;
+  background: linear-gradient(110deg, #d4af37 calc(var(--unity-shine) - 12%), #fff2b8 var(--unity-shine), #d4af37 calc(var(--unity-shine) + 12%));
+  background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  #why.why-typography .why-type-hover::before, #why.why-typography .why-type-keyword { transition: none; }
+  #why.why-typography .why-grid > div:first-child h2::after { transform: scaleX(1); }
+  #why.why-typography .why-type-row:focus-visible .why-type-title::after { transform: scaleX(1); }
+}
+@media (forced-colors: active) {
+  #why.why-typography .why-type-title,
+  #why.why-typography .why-type-unity > span { background: none; -webkit-text-fill-color: currentColor; color: CanvasText; }
+  #why.why-typography .why-type-keyword { color: CanvasText; }
+}

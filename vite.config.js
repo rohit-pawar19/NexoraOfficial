@@ -16,6 +16,9 @@ function mountReviews(server) {
 
 module.exports = defineConfig({
   appType: 'mpa',
+  optimizeDeps: {
+    include: ['three', 'three/addons/environments/RoomEnvironment.js', 'gsap', 'gsap/ScrollTrigger'],
+  },
   build: {
     rollupOptions: {
       input: Object.fromEntries(pages.map(name => [name, resolve(root, `${name}.html`)])),

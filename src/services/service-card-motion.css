@@ -1,0 +1,67 @@
+.services-page .service-card-shell {
+  display: flex;
+  min-width: 0;
+  perspective: 1200px;
+}
+.services-page .service-card-shell > .service-card { width: 100%; }
+.services-page .service-assembly .service-grid { position: relative; }
+.services-page .service-card-shell.is-service-entering { position: relative; }
+.services-page .service-card-shell.is-service-entering::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+  border-radius: 16px;
+  box-shadow: 0 16px 28px #13254a20, 0 5px 13px #a679201a;
+  opacity: var(--service-flight-shadow, 0);
+  pointer-events: none;
+}
+.services-page .service-object-depth {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  margin-bottom: 16px;
+  transform-style: preserve-3d;
+}
+.services-page .service-object-depth > .service-image { margin-bottom: 0; }
+.services-page .service-card.service-depth.is-exploring {
+  box-shadow: 0 24px 38px -17px #1020463b, 0 8px 18px -8px #79500b1c,
+    inset 0 1px 0 #fff2b830;
+}
+.services-page .service-border-reflection {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  overflow: visible;
+  border-radius: inherit;
+}
+.service-border-reflection rect { stroke-width: 1; vector-effect: non-scaling-stroke; }
+.service-border-reflection .service-border-glint { opacity: .8; }
+.services-page .service-card.service-depth h3 { position: relative; }
+.services-page .service-card.service-depth h3::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 44px;
+  height: 1px;
+  background: linear-gradient(90deg, #79500b, #d4af37 42%, #fff2b8 70%, #b8860b);
+  transform: scaleX(var(--title-line, 0));
+  transform-origin: left center;
+  pointer-events: none;
+}
+.services-page .service-card.service-depth:focus-within {
+  outline: 1px solid #b8860b;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .services-page .service-card-shell,
+  .services-page .service-object-depth,
+  .services-page .service-card.service-depth h3,
+  .services-page .service-card.service-depth .service-number { transform: none !important; }
+  .services-page .service-card.service-depth:focus-within h3::after { transform: scaleX(1); }
+}
