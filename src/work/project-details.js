@@ -94,6 +94,8 @@ export function initProjectDetails(gallery, cards) {
     let active;
     let motion;
     let cursorVisible = false;
+    let pointerFrame = 0;
+    let pointerEvent;
 
     function cursorPosition(event) {
       const offset = 16;
@@ -116,6 +118,9 @@ export function initProjectDetails(gallery, cards) {
     }
 
     function reset() {
+      cancelAnimationFrame(pointerFrame);
+      pointerFrame = 0;
+      pointerEvent = undefined;
       if (active) {
         motion.x(0);
         motion.y(0);
@@ -160,7 +165,15 @@ export function initProjectDetails(gallery, cards) {
       }
     }
 
-    gallery.addEventListener('pointermove', inspect, { signal, passive: true });
+    gallery.addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse') return;
+      pointerEvent = event;
+      if (pointerFrame) return;
+      pointerFrame = requestAnimationFrame(() => {
+        pointerFrame = 0;
+        inspect(pointerEvent);
+      });
+    }, { signal, passive: true });
     gallery.addEventListener('pointerout', (event) => {
       if (!active || active.contains(event.relatedTarget)) {
         if (event.target.closest(projectLink) !== event.relatedTarget?.closest?.(projectLink)) {

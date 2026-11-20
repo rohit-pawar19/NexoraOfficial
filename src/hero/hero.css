@@ -11,7 +11,11 @@
 }
 #home .logo-animation::before,
 #home .logo-animation::after { display: none; }
-#home .logo-animation > canvas {
+.hero-artwork {
+  position: absolute;
+  inset: 0;
+}
+.hero-artwork > canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -20,9 +24,12 @@
   opacity: 0;
   transition: opacity .24s ease-out;
 }
-#home .ribbon-ready > canvas { opacity: 1; }
+.hero-artwork.ribbon-ready > canvas { opacity: 1; }
 @media (prefers-reduced-motion: no-preference) {
-  #home .ribbon-pending .hero-tagline-reveal { visibility: hidden; }
+  .hero-artwork.ribbon-pending .hero-tagline-reveal { visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-artwork > canvas { transition: none; }
 }
 #home .home-intro-grid > :first-child { position: relative; z-index: 1; min-width: 0; }
 @media (max-width: 767.98px) {

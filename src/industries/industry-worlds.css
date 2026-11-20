@@ -1,27 +1,28 @@
-#industry .industry-card > .industry-world {
+﻿#industry .industry-card > .industry-world {
   position: absolute;
   inset: 10px 12px auto;
-  height: var(--industry-world-height, 112px);
+  height: var(--industry-world-height, 0px);
   z-index: 0;
-  pointer-events: none;
   overflow: hidden;
+  border: 0;
   border-radius: 12px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
   contain: layout paint;
-  opacity: 0;
-  visibility: hidden;
 }
 #industry .industry-world svg,
-#industry .industry-world-canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; }
-#industry .industry-world svg { opacity: .92; }
-#industry .industry-world .world-built { opacity: var(--world-progress, 1); }
+#industry .industry-world-canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; pointer-events: none; }
+#industry .industry-world svg { opacity: .91; }
 #industry .industry-world.has-industry-world svg { visibility: hidden; }
+#industry .industry-world:focus-visible { outline: 1px solid #e5c389; outline-offset: -2px; }
 #industry .industry-card > h3,
 #industry .industry-card > p,
 #industry .industry-card > a,
 #industry .industry-card > span { z-index: 1; }
 #industry .industry-card.is-world-selected { border-color: #d4af3770; }
-#industry .industry-card:focus-within { outline: 1px solid #d4af37; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
+  #industry .industry-world { pointer-events: none; }
   #industry .industry-card { transition: none; }
   #industry .industry-card:hover { transform: none; }
 }

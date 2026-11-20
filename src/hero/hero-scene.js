@@ -1,7 +1,9 @@
 import * as THREE from 'three';
+import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { addTaglineEntrance } from './hero-tagline.js';
+import { fitRibbonVertices } from './hero-framing.js';
 import { useConstrainedGraphics } from '../motion/graphics-budget.js';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -53,15 +55,13 @@ export function createRibbonGeometry(segments, strand) {
   return geometry;
 }
 
-export function initHero() {
-  const hero = document.querySelector('#home.home-intro');
-  const host = hero?.querySelector('.logo-animation');
-  if (!host) return () => {};
+export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
   const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
   let teardown = () => {};
 
   function start() {
-    if (preference.matches) return;
+    const staticPose = preference.matches;
+    if (staticPose && !intro?.active) return;
     const mobile = window.matchMedia('(max-width: 767px)').matches;
     const constrained = useConstrainedGraphics();
     let renderer;
@@ -69,6 +69,7 @@ export function initHero() {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !constrained, powerPreference: 'low-power' });
     } catch {
       host.classList.remove('ribbon-pending');
+      intro?.fail();
       return;
     }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, constrained ? 1.2 : 1.65));
@@ -151,10 +152,29 @@ export function initHero() {
     scene.add(key, rim, fill);
     const ribbons = Array.from({ length: mobile ? 2 : 3 }, (_, i) => {
       const geometry = createRibbonGeometry(mobile ? 160 : constrained ? 220 : 320, i);
+      // Each frustum constraint is linear in the ribbon's vertices. Its
+      // maximum is on the hull, so interior points cannot affect the framing.
+      const positions = geometry.getAttribute('position');
+      const points = Array.from({ length: positions.count }, (_, index) =>
+        new THREE.Vector3().fromBufferAttribute(positions, index));
+      const hullPoints = new Set();
+      for (const face of new ConvexHull().setFromPoints(points).faces) {
+        let edge = face.edge;
+        do {
+          hullPoints.add(edge.head().point);
+          edge = edge.next;
+        } while (edge !== face.edge);
+      }
+      const framingPositions = new Float32Array(hullPoints.size * 3);
+      let offset = 0;
+      for (const point of hullPoints) {
+        point.toArray(framingPositions, offset);
+        offset += 3;
+      }
       geometry.setDrawRange(0, 0);
       const mesh = new THREE.Mesh(geometry, material);
       sculpture.add(mesh);
-      return { mesh, progress: 0, count: geometry.index.count };
+      return { mesh, framingPositions, progress: 0, count: geometry.index.count };
     });
     const motion = { scroll: 0, entrance: 0 };
     const basePose = new THREE.Quaternion().setFromEuler(new THREE.Euler(.08, -.12, -.09));
@@ -175,10 +195,9 @@ export function initHero() {
       framingCamera.lookAt(0, 0, 0);
       framingCamera.updateMatrixWorld(true);
       let bottom = 0;
-      for (const { mesh } of ribbons) {
-        const vertices = mesh.geometry.getAttribute('position');
-        for (let i = 0; i < vertices.count; i++) {
-          projected.fromBufferAttribute(vertices, i).applyMatrix4(settledPose).project(framingCamera);
+      for (const { framingPositions } of ribbons) {
+        for (let i = 0; i < framingPositions.length; i += 3) {
+          projected.fromArray(framingPositions, i).applyMatrix4(settledPose).project(framingCamera);
           bottom = Math.max(bottom, (1 - projected.y) * height / 2);
         }
       }
@@ -187,7 +206,7 @@ export function initHero() {
       artworkBottom = bottom;
     }
     function resize() {
-      const { width, height } = host.getBoundingClientRect();
+      const { width, height } = layoutHost.getBoundingClientRect();
       if (!width || !height) return;
       viewportWidth = width; viewportHeight = height;
       camera.aspect = width / height;
@@ -196,8 +215,6 @@ export function initHero() {
       renderer.setSize(width, height, false);
       positionTagline(width, height);
     }
-    const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(host);
     resize();
     let entranceTimeline;
     const context = gsap.context(() => {
@@ -210,54 +227,56 @@ export function initHero() {
       sequence.to(motion, { entrance: 1, duration: 2.96, ease: 'power2.inOut' }, 0);
       // Includes the final strand settling and the camera entrance: 2.96 seconds.
       addTaglineEntrance(sequence, host, sequence.duration());
-      gsap.to(motion, { scroll: 1, ease: 'none', scrollTrigger: {
+      if (!staticPose) gsap.to(motion, { scroll: 1, ease: 'none', scrollTrigger: {
         trigger: hero, start: 'top top', end: 'bottom top', scrub: 1.2,
       } });
     }, hero);
     const viewInverse = new THREE.Quaternion();
-    const fitVertex = new THREE.Vector3();
+    const fitRotation = new THREE.Quaternion();
+    const fitMatrix = new THREE.Matrix4();
+    const fitBasis = new THREE.Matrix3();
+    const fitOffset = new THREE.Vector3();
+    const tanY = Math.tan(THREE.MathUtils.degToRad(18));
     let fittedDistance = baseDistance;
     function fitRotatedSculpture(delta) {
       // Fit the turned sculpture above the fixed tagline, including its depth.
       // Move out immediately to avoid clipping; ease back in after a tall pose.
       viewInverse.copy(camera.quaternion).invert();
-      const tanY = Math.tan(THREE.MathUtils.degToRad(18));
       const tanX = tanY * camera.aspect * Math.max(.1, 1 - 16 / viewportWidth);
       const topTan = tanY * Math.max(.1, 1 - 16 / viewportHeight);
       const bottomTan = tanY * Math.max(.1, 2 * artworkBottom / viewportHeight - 1);
       let required = camera.position.length();
-      for (const { mesh } of ribbons) {
-        const vertices = mesh.geometry.getAttribute('position');
-        for (let i = 0; i < vertices.count; i++) {
-          fitVertex.fromBufferAttribute(vertices, i).applyQuaternion(mesh.quaternion)
-            .applyQuaternion(sculpture.quaternion).add(sculpture.position).applyQuaternion(viewInverse);
-          required = Math.max(required, fitVertex.z + Math.max(
-            (Math.abs(fitVertex.x) + .025) / tanX,
-            (fitVertex.y + .025) / topTan,
-            (-fitVertex.y + .025) / bottomTan,
-          ));
-        }
+      fitOffset.copy(sculpture.position).applyQuaternion(viewInverse);
+      for (const { mesh, framingPositions } of ribbons) {
+        fitRotation.copy(viewInverse).multiply(sculpture.quaternion).multiply(mesh.quaternion);
+        fitBasis.setFromMatrix4(fitMatrix.makeRotationFromQuaternion(fitRotation));
+        required = fitRibbonVertices(framingPositions, fitBasis.elements, fitOffset,
+          tanX, topTan, bottomTan, required);
       }
       fittedDistance = required > fittedDistance ? required
         : THREE.MathUtils.lerp(fittedDistance, required, 1 - Math.exp(-delta * 3));
       camera.position.setLength(fittedDistance);
     }
     let frame = 0, visible = true, previous = 0, elapsed = 0, ready = false;
+    let entranceReleased = !intro?.active;
     function render(now) {
-      frame = requestAnimationFrame(render);
+      frame = staticPose ? 0 : requestAnimationFrame(render);
       if (!viewportWidth || !viewportHeight) return;
-      if (now - previous < (constrained ? 1000 / 30 - 1 : 16)) return;
+      if (!staticPose && now - previous < (constrained ? 1000 / 30 - 1 : 16)) return;
       const delta = Math.min((now - previous) / 1000, .05);
       previous = now;
       elapsed += delta;
-      for (const ribbon of ribbons) ribbon.mesh.geometry.setDrawRange(0, Math.floor(ribbon.count * ribbon.progress / 6) * 6);
+      for (const ribbon of ribbons) {
+        const count = Math.floor(ribbon.count * ribbon.progress / 6) * 6;
+        if (count !== ribbon.mesh.geometry.drawRange.count) ribbon.mesh.geometry.setDrawRange(0, count);
+      }
       // All loops share the visibility-paused clock, independent of the entrance timeline.
       // Fade their amplitudes in continuously so completing the entrance never resets a pose.
-      const idle = motion.entrance * motion.entrance;
+      const idle = staticPose ? 0 : motion.entrance * motion.entrance;
       const movement = mobile ? .55 : 1;
       // Start the turntable after the shared entrance; never wrap or reverse its
       // angle. The existing visibility-paused render clock drives all motion.
-      if (motion.entrance === 1) turnAngle += delta * turnSpeed;
+      if (!staticPose && motion.entrance === 1) turnAngle += delta * turnSpeed;
       turnPose.setFromAxisAngle(verticalAxis, turnAngle);
       sculpture.quaternion.copy(turnPose).multiply(basePose);
       sculpture.position.y = Math.sin(elapsed * Math.PI * 2 / 4.8) * .05 * idle * movement;
@@ -274,19 +293,31 @@ export function initHero() {
           && !renderer.getContext().isContextLost()) {
         ready = true;
         host.classList.replace('ribbon-pending', 'ribbon-ready');
+        intro?.firstFrame();
       }
     }
     function playback() {
       cancelAnimationFrame(frame);
-      if (visible && !document.hidden) { previous = performance.now(); frame = requestAnimationFrame(render); }
-      entranceTimeline.paused(!visible || document.hidden);
+      const playing = entranceReleased && (visible || intro?.active) && !document.hidden;
+      if (playing) { previous = performance.now(); frame = requestAnimationFrame(render); }
+      entranceTimeline.paused(staticPose || !playing);
     }
+    function beginEntrance(speed = 1) {
+      entranceReleased = true;
+      entranceTimeline.timeScale(speed);
+      if (staticPose) entranceTimeline.progress(1);
+      playback();
+    }
+    const resizeObserver = new ResizeObserver(() => {
+      resize();
+      if (staticPose && entranceReleased) playback();
+    });
+    resizeObserver.observe(layoutHost);
     const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; playback(); });
     observer.observe(hero);
     document.addEventListener('visibilitychange', playback);
-    const lost = (event) => { event.preventDefault(); teardown(); };
+    const lost = () => { teardown(); intro?.fail(); };
     renderer.domElement.addEventListener('webglcontextlost', lost);
-    playback();
     teardown = () => {
       cancelAnimationFrame(frame);
       context.revert();
@@ -298,11 +329,14 @@ export function initHero() {
       material.dispose();
       environment.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       renderer.domElement.remove();
       host.classList.remove('ribbon-pending', 'ribbon-ready');
       host.style.removeProperty('--tagline-top');
       teardown = () => {};
     };
+    if (intro?.active) intro.run(beginEntrance, entranceTimeline.duration());
+    else playback();
   }
   const change = () => { teardown(); start(); };
   preference.addEventListener('change', change);

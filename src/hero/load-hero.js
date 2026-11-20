@@ -1,13 +1,17 @@
+import { createHeroIntro } from './hero-intro.js';
+
 export function loadHeroWhenVisible() {
   const hero = document.querySelector('#home.home-intro');
   const host = hero?.querySelector('.logo-animation');
-  if (!host) return () => {};
-  if (!('IntersectionObserver' in window)) {
-    host.classList.remove('ribbon-pending');
+  const artwork = host?.querySelector('.hero-artwork');
+  if (!artwork) return () => {};
+  if (!('IntersectionObserver' in window) || !('ResizeObserver' in window)) {
+    artwork.classList.remove('ribbon-pending');
     return () => {};
   }
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const intro = createHeroIntro(host, artwork, reduced);
   const listeners = new AbortController();
   const { signal } = listeners;
   let visible = false;
@@ -15,19 +19,25 @@ export function loadHeroWhenVisible() {
   let mount;
   let dispose;
 
+  function shouldMount() {
+    return !signal.aborted && !document.hidden
+      && (intro?.active || (visible && !reduced.matches));
+  }
+
   function ensure() {
-    if (signal.aborted || !visible || document.hidden || reduced.matches || loading || dispose) return;
+    if (!shouldMount() || loading || dispose) return;
     loading = true;
     (mount ? Promise.resolve(mount) : import('./hero-scene.js').then(({ initHero }) => initHero)).then(initHero => {
       loading = false;
       mount = initHero;
-      if (signal.aborted || !visible || document.hidden || reduced.matches) return;
+      if (!shouldMount()) return;
       observer.disconnect();
-      dispose = mount();
+      dispose = mount({ hero, host, artwork, intro });
     }).catch(error => {
       observer.disconnect();
       if (signal.aborted) return;
-      host.classList.remove('ribbon-pending');
+      artwork.classList.remove('ribbon-pending');
+      intro?.fail();
       console.warn('The 3D hero artwork could not initialize.', error);
     });
   }
@@ -39,10 +49,12 @@ export function loadHeroWhenVisible() {
   observer.observe(hero);
   reduced.addEventListener('change', ensure, { signal });
   document.addEventListener('visibilitychange', ensure, { signal });
+  ensure();
 
   return () => {
     listeners.abort();
     observer.disconnect();
+    intro?.dispose();
     dispose?.();
   };
 }

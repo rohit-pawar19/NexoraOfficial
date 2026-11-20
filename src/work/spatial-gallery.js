@@ -102,7 +102,7 @@ export function initSpatialGallery() {
     gallery.addEventListener('focusin', schedule, { signal });
     gallery.addEventListener('focusout', schedule, { signal });
     window.addEventListener('scroll', () => {
-      if (visible.size || selected) schedule();
+      if (visible.size) schedule();
     }, { passive: true, signal });
     window.addEventListener('resize', schedule, { signal });
     const filter = new MutationObserver(schedule);

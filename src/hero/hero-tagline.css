@@ -1,4 +1,4 @@
-#home .hero-tagline {
+.hero-artwork .hero-tagline {
   --shine: -15%;
   --shine-opacity: 0;
   position: absolute;
@@ -18,8 +18,8 @@
   pointer-events: none;
   isolation: isolate;
 }
-#home .hero-tagline-reveal { display: block; }
-#home .hero-tagline-word {
+.hero-artwork .hero-tagline-reveal { display: block; }
+.hero-artwork .hero-tagline-word {
   display: inline-block;
   color: #d4af37;
   background: linear-gradient(175deg, #fff2b8 5%, #f6d66b 24%, #d4af37 46%, #b8860b 70%, #e4be52 92%);
@@ -27,7 +27,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-#home .hero-tagline::after {
+.hero-artwork .hero-tagline::after {
   content: attr(data-text);
   position: absolute;
   inset: 0;
@@ -43,11 +43,11 @@
   -webkit-text-fill-color: transparent;
 }
 @media (max-width: 767.98px) {
-  #home .hero-tagline {
+  .hero-artwork .hero-tagline {
     font-size: clamp(16px, 3.6vw, 23px);
     letter-spacing: .025em;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  #home .hero-tagline::after { display: none; }
+  .hero-artwork .hero-tagline::after { display: none; }
 }

@@ -40,7 +40,7 @@ export function createServiceStudio() {
       const interval = 1 / 30;
       if (time - entry.last < interval) continue;
       entry.time += Math.min(time - (entry.last || time), .15); entry.last = time;
-      const width = entry.host.clientWidth, height = entry.host.clientHeight;
+      const { width, height } = entry;
       if (!width || !height) continue;
       const scale = Math.min(devicePixelRatio || 1, constrained ? 1 : 1.5);
       const outputWidth = Math.min(renderWidth, Math.round(width * scale));
@@ -64,10 +64,22 @@ export function createServiceStudio() {
       renderer.render(entry.scene, entry.camera);
       entry.context.clearRect(0, 0, outputWidth, outputHeight);
       entry.context.drawImage(renderer.domElement, 0, 0, outputWidth, outputHeight);
-      entry.host.classList.add('has-studio-model');
+      if (!entry.ready) {
+        entry.ready = true;
+        entry.host.classList.add('has-studio-model');
+      }
     }
   }
   const visibility = () => { entries.forEach(entry => { entry.last = 0; }); schedule(); };
+  const byHost = new Map();
+  const resize = new ResizeObserver(changes => {
+    for (const { target, contentRect } of changes) {
+      const entry = byHost.get(target);
+      if (!entry) continue;
+      entry.width = contentRect.width;
+      entry.height = contentRect.height;
+    }
+  });
   document.addEventListener('visibilitychange', visibility);
   return {
     add(host, type, motion) {
@@ -85,18 +97,27 @@ export function createServiceStudio() {
       const rim = new THREE.DirectionalLight('#fff1d5', .85); rim.position.set(2, 2, -3);
       scene.add(key, fill, rim);
       host.append(canvas);
-      const entry = { host, canvas, context, scene, camera, key, model, motion, type, visible: true, last: 0, time: 0 };
+      const entry = { host, canvas, context, scene, camera, key, model, motion, type,
+        visible: true, last: 0, time: 0, width: host.clientWidth, height: host.clientHeight };
+      byHost.set(host, entry);
+      resize.observe(host);
       entries.add(entry); schedule();
       return {
         visible(value) { entry.visible = value; entry.last = 0; schedule(); },
         dispose() {
           if (!entries.has(entry)) return;
-          entries.delete(entry); model.dispose(); canvas.remove(); host.classList.remove('has-studio-model'); schedule();
+          entries.delete(entry);
+          if (byHost.get(host) === entry) {
+            byHost.delete(host);
+            resize.unobserve(host);
+          }
+          model.dispose(); canvas.remove(); host.classList.remove('has-studio-model'); schedule();
         },
       };
     },
     dispose() {
       disposed = true; gsap.ticker.remove(tick); listening = false;
+      resize.disconnect(); byHost.clear();
       document.removeEventListener('visibilitychange', visibility);
       entries.forEach(entry => { entry.model.dispose(); entry.canvas.remove(); entry.host.classList.remove('has-studio-model'); });
       entries.clear(); environment.dispose(); renderer.dispose(); renderer.forceContextLoss();

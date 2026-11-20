@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("nexora:page-ready", () => {
   const form = document.getElementById("reviewForm");
   const list = document.getElementById("reviewsList");
   const summary = document.getElementById("reviewsSummary");

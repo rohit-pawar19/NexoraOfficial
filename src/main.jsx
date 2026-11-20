@@ -1,11 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import parse from 'html-react-parser';
-import home from './content/index.html?raw';
-import services from './content/services.html?raw';
-import work from './content/work.html?raw';
-import reviews from './content/reviews.html?raw';
-import contact from './content/contact.html?raw';
 import './hero/hero-tagline.css';
 import './hero/hero.css';
 import { loadHeroWhenVisible } from './hero/load-hero.js';
@@ -19,11 +14,19 @@ import { initWhyTypography } from './why/why-typography.js';
 import { initContactFooterMotion } from './motion/contact-footer.js';
 import { initLiquidGold } from './motion/liquid-gold.js';
 
-const pages = { 'index.html': home, 'services.html': services, 'work.html': work, 'reviews.html': reviews, 'contact.html': contact };
+const pages = {
+  'index.html': () => import('./content/index.html?raw'),
+  'services.html': () => import('./content/services.html?raw'),
+  'work.html': () => import('./content/work.html?raw'),
+  'reviews.html': () => import('./content/reviews.html?raw'),
+  'contact.html': () => import('./content/contact.html?raw'),
+};
 const page = location.pathname.split('/').pop() || 'index.html';
 
-function SitePage() {
-  const content = useMemo(() => parse(pages[page] || home), []);
+function SitePage({ markup }) {
+  const content = useMemo(() => parse(markup), [markup]);
+
+  useLayoutEffect(() => loadHeroWhenVisible(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +45,6 @@ function SitePage() {
     const disposeContactFooter = initContactFooterMotion();
     const disposeLiquidGold = initLiquidGold();
     const disposeMotion = initSiteMotion();
-    const disposeHero = loadHeroWhenVisible();
     if (page === 'work.html') {
       import('./work/spatial-gallery.js').then(({ initSpatialGallery }) => {
         if (!cancelled) disposeGallery = initSpatialGallery();
@@ -65,12 +67,11 @@ function SitePage() {
         });
         if (cancelled) return;
       }
-      document.dispatchEvent(new Event('DOMContentLoaded'));
+      document.dispatchEvent(new Event('nexora:page-ready'));
     }
     initialize().catch(console.error);
     return () => {
       cancelled = true;
-      disposeHero();
       disposeMotion();
       disposeGallery?.();
       disposeClients?.();
@@ -88,4 +89,6 @@ function SitePage() {
   return content;
 }
 
-createRoot(document.getElementById('root')).render(<SitePage />);
+(Object.hasOwn(pages, page) ? pages[page] : pages['index.html'])()
+  .then(({ default: markup }) => createRoot(document.getElementById('root')).render(<SitePage markup={markup} />))
+  .catch(console.error);

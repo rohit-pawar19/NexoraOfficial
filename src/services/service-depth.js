@@ -83,6 +83,7 @@ export function initServiceDepth() {
   const cardMotion = createServiceCardMotion(cards, reduced, fine);
   const states = new Map(), removers = [];
   let active = null, disposed = false, studio = null, loading = null, studioFailed = false;
+  let pointerFrame = 0, pointerX = 0, pointerY = 0;
   const listen = (target, name, fn, options) => {
     target.addEventListener(name, fn, options);
     removers.push(() => target.removeEventListener(name, fn, options));
@@ -116,6 +117,8 @@ export function initServiceDepth() {
     if (!active) return;
     const card = active, state = states.get(card);
     active = null;
+    cancelAnimationFrame(pointerFrame);
+    pointerFrame = 0;
     state.entrance?.kill(); state.fallback?.kill(); state.idle?.kill();
     state.exit?.kill();
     // Freeze the last rendered frame during the CSS fade. Only the next hovered
@@ -155,6 +158,20 @@ export function initServiceDepth() {
     attachProduct(card);
     state.entrance.play(0);
   }
+  function movePointer() {
+    pointerFrame = 0;
+    if (!active || document.hidden) return;
+    const card = active;
+    const state = states.get(card);
+    const box = card.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    const x = gsap.utils.clamp(-.5, .5, (pointerX - box.left) / box.width - .5);
+    const y = gsap.utils.clamp(-.5, .5, (pointerY - box.top) / box.height - .5);
+    card.style.setProperty('--light-x', `${(x + .5) * 100}%`);
+    card.style.setProperty('--light-y', `${(y + .5) * 100}%`);
+    gsap.to(state.motion.pointer, { x: x * 2, y: y * 2, duration: .65, ease: 'power3.out', overwrite: true });
+    cardMotion.move(card, x, y);
+  }
   for (const card of cards) {
     const image = card.querySelector('.service-image');
     const [type, html] = designs[card.dataset.service];
@@ -169,13 +186,10 @@ export function initServiceDepth() {
     listen(card, 'pointermove', event => {
       if (!fine.matches || event.pointerType === 'touch' || reduced.matches) return;
       activate(card);
-      const box = card.getBoundingClientRect();
-      const x = gsap.utils.clamp(-.5, .5, (event.clientX - box.left) / box.width - .5);
-      const y = gsap.utils.clamp(-.5, .5, (event.clientY - box.top) / box.height - .5);
-      card.style.setProperty('--light-x', `${(x + .5) * 100}%`);
-      card.style.setProperty('--light-y', `${(y + .5) * 100}%`);
-      gsap.to(state.motion.pointer, { x: x * 2, y: y * 2, duration: .65, ease: 'power3.out', overwrite: true });
-      cardMotion.move(card, x, y);
+      if (active !== card) return;
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      if (!pointerFrame) pointerFrame = requestAnimationFrame(movePointer);
     }, { passive: true });
     listen(card, 'pointerleave', () => { if (active === card) deactivate(); });
     listen(card, 'pointercancel', () => { if (active === card) deactivate(true); });

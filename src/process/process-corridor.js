@@ -37,8 +37,11 @@ export function mountProcessCorridor(host, initialProgress = 0, initialStage = -
   scene.add(productKey, productKey.target, productFill);
   const dark = new THREE.Color('#06123c'), bright = new THREE.Color('#284864');
   let lastProgress = initialProgress, activeStage = -1, visible = true, ticking = false, previousTime = 0, disposed = false;
-  function draw() {
+  let cameraProgress;
+  function positionCamera() {
     const progress = lastProgress;
+    if (progress === cameraProgress) return;
+    cameraProgress = progress;
     const state = model.update(progress);
     camera.position.set(Math.sin(progress * Math.PI * 2) * .07, .06, state.cameraZ);
     camera.lookAt(0, .02 + state.opening * .08, state.cameraZ - 5);
@@ -51,6 +54,9 @@ export function mountProcessCorridor(host, initialProgress = 0, initialStage = -
     productKey.position.set(-1.5, 2.5, state.cameraZ - 1);
     productKey.target.position.set(0, -.2, state.cameraZ - 3.35);
     productKey.target.updateMatrixWorld();
+  }
+  function draw() {
+    positionCamera();
     renderer.render(scene, camera);
   }
   function tick(time) {
@@ -59,8 +65,10 @@ export function mountProcessCorridor(host, initialProgress = 0, initialStage = -
     previousTime = time; draw();
   }
   function setVisible(value) {
-    visible = value; director.pause(!value || document.hidden); previousTime = 0;
+    visible = value;
     const needed = visible && !document.hidden && !disposed;
+    if (needed === ticking) return;
+    director.pause(!needed); previousTime = 0;
     if (needed && !ticking) { gsap.ticker.add(tick); ticking = true; }
     if (!needed && ticking) { gsap.ticker.remove(tick); ticking = false; }
   }

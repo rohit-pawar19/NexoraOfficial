@@ -1,5 +1,5 @@
 /* NexoraOfficial Theme - site interactions */
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("nexora:page-ready", () => {
   const year = document.getElementById("year");
   if (year) year.textContent = new Date().getFullYear();
 
@@ -168,6 +168,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const navLinks = [...document.querySelectorAll('.nav-link[href^="#"]')];
   let navigationFrame = 0;
   let activeSection;
+  let sectionStarts = [];
+
+  function measureSections() {
+    sectionStarts = sections.map(section => ({ id: section.id, top: section.offsetTop - 160 }));
+    if (!navigationFrame) navigationFrame = requestAnimationFrame(updateScrollNavigation);
+  }
 
   function updateScrollNavigation() {
     navigationFrame = 0;
@@ -175,8 +181,8 @@ document.addEventListener("DOMContentLoaded", () => {
     backToTop?.classList.toggle("show", scrollTop > 500);
     if (!navLinks.length) return;
     let current = "";
-    sections.forEach((section) => {
-      if (scrollTop >= section.offsetTop - 160) current = section.id;
+    sectionStarts.forEach(({ id, top }) => {
+      if (scrollTop >= top) current = id;
     });
     if (current === activeSection) return;
     activeSection = current;
@@ -188,7 +194,16 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("scroll", () => {
     if (!navigationFrame) navigationFrame = requestAnimationFrame(updateScrollNavigation);
   }, { passive: true });
-  if (window.scrollY > 0) updateScrollNavigation();
+  if (navLinks.length) {
+    measureSections();
+    if ("ResizeObserver" in window) {
+      const sectionSizes = new ResizeObserver(measureSections);
+      sectionSizes.observe(document.body);
+      sections.forEach(section => sectionSizes.observe(section));
+    } else {
+      window.addEventListener("resize", measureSections, { passive: true });
+    }
+  } else if (window.scrollY > 0) updateScrollNavigation();
 
   backToTop?.addEventListener("click", () => {
     window.scrollTo({
@@ -325,7 +340,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Reveal each section once. Content stays visible if animation APIs are unavailable.
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("nexora:page-ready", () => {
   const motionPreference = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   );
@@ -409,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Pointer light is event-driven; ambient loops pause when the hero is offscreen.
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("nexora:page-ready", () => {
   const pointerMotion = window.matchMedia(
     "(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)",
   );

@@ -21,17 +21,29 @@ export function createProcessCorridorModel() {
     const part = mesh(new THREE.BoxGeometry(w, h, d), material, parent); part.position.set(...position); return part;
   }
   const frames = [], details = [];
+  const ringGeometry = new THREE.TorusGeometry(1.72, .045, 12, 80);
   for (let i = 0; i < PROCESS_STAGE_COUNT; i++) {
     const station = new THREE.Group(); station.position.z = -i * 5.2; object.add(station);
     const material = gold.clone(); materials.add(material);
-    const frame = mesh(new THREE.TorusGeometry(1.72, .045, 12, 80), material, station);
+    const frame = mesh(ringGeometry, material, station);
     const detail = new THREE.Group(); detail.position.set(i % 2 ? 2.03 : -2.03, -.15, -.15); station.add(detail);
     frames.push(frame); details.push(detail);
   }
   box(4.9, .08, 49, [0, -1.8, -18], navy);
   for (const x of [-1.6, 1.6]) box(.012, .012, 49, [x, -1.75, -18], light);
-  for (let i = 0; i < 16; i++) box(4.4, .007, .012, [0, -1.748, 4 - i * 3], light);
-  for (const x of [-2.4, 2.4]) for (let i = 0; i < 8; i++) box(.07, 4.1, .07, [x, .1, -i * 5.2], navy);
+  function repeatBox(width, height, depth, material, positions) {
+    const geometry = new THREE.BoxGeometry(width, height, depth);
+    geometries.add(geometry);
+    const instances = new THREE.InstancedMesh(geometry, material, positions.length);
+    const matrix = new THREE.Matrix4();
+    positions.forEach((position, index) => instances.setMatrixAt(index, matrix.makeTranslation(...position)));
+    object.add(instances);
+    return instances;
+  }
+  const floorLines = repeatBox(4.4, .007, .012, light,
+    Array.from({ length: 16 }, (_, i) => [0, -1.748, 4 - i * 3]));
+  const posts = repeatBox(.07, 4.1, .07, navy,
+    [-2.4, 2.4].flatMap(x => Array.from({ length: 8 }, (_, i) => [x, .1, -i * 5.2])));
 
   // Understand: the wireframe is constructed edge by edge.
   const wireGeometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(.55, .55, .55)); geometries.add(wireGeometry);
@@ -62,10 +74,13 @@ export function createProcessCorridorModel() {
   const wings = [-1, 1].map(sign => box(.045, 3.8, .14, [sign * 1.6, 0, -37.3], gold));
   const growth = Array.from({ length: 3 }, (_, i) => box(.09, .25 + i * .18, .09, [(i - 1) * .2, -.3, 0], light, details[7]));
   const horizon = mesh(new THREE.TorusGeometry(3.2, .06, 12, 96), gold); horizon.position.z = -43;
-  let disposed = false;
+  let disposed = false, detailsVisible = true;
   return {
     object,
-    setStageDetailsVisible(visible) { details.forEach(detail => { detail.visible = visible; }); },
+    setStageDetailsVisible(visible) {
+      detailsVisible = visible;
+      details.forEach(detail => { detail.visible = visible; });
+    },
     update(progress) {
       const state = journeyPosition(progress), position = state.progress * 7;
       const activation = i => 1 - THREE.MathUtils.smoothstep(Math.abs(position - i), .05, 1.15);
@@ -73,18 +88,20 @@ export function createProcessCorridorModel() {
         frame.material.roughness = .25 - activation(i) * .1;
         frame.material.envMapIntensity = .8 + activation(i) * .65;
       });
-      wireGeometry.setDrawRange(0, Math.max(2, Math.floor(wireGeometry.attributes.position.count * (.2 + activation(0) * .8) / 2) * 2));
-      plans.forEach((part, i) => { part.position.x = (1 - activation(1)) * (i - 1) * .25; part.rotation.z = (1 - activation(1)) * (i - 1) * .2; });
-      facets.forEach((part, i) => { part.position.x = (1 - activation(2)) * Math.cos(i * 2.1) * .35; part.rotation.y = activation(2) * .6; });
-      structure.forEach((part, i) => { part.position.z = (1 - activation(3)) * i * .16; });
-      sheets.forEach((part, i) => { part.position.x = (1 - activation(4)) * i * .12; part.rotation.z = (1 - activation(4)) * i * .08; });
-      links.forEach((part, i) => { part.scale.x = .15 + activation(5) * .85; nodes[i].scale.setScalar(.5 + activation(5) * .5); });
-      route.forEach((part, i) => { part.scale.x = .1 + THREE.MathUtils.smoothstep(activation(6), i * .12, .5 + i * .12) * .9; });
-      growth.forEach((part, i) => { part.scale.y = 1 + state.opening * (i + 1) * .35; });
+      if (detailsVisible) {
+        wireGeometry.setDrawRange(0, Math.max(2, Math.floor(wireGeometry.attributes.position.count * (.2 + activation(0) * .8) / 2) * 2));
+        plans.forEach((part, i) => { part.position.x = (1 - activation(1)) * (i - 1) * .25; part.rotation.z = (1 - activation(1)) * (i - 1) * .2; });
+        facets.forEach((part, i) => { part.position.x = (1 - activation(2)) * Math.cos(i * 2.1) * .35; part.rotation.y = activation(2) * .6; });
+        structure.forEach((part, i) => { part.position.z = (1 - activation(3)) * i * .16; });
+        sheets.forEach((part, i) => { part.position.x = (1 - activation(4)) * i * .12; part.rotation.z = (1 - activation(4)) * i * .08; });
+        links.forEach((part, i) => { part.scale.x = .15 + activation(5) * .85; nodes[i].scale.setScalar(.5 + activation(5) * .5); });
+        route.forEach((part, i) => { part.scale.x = .1 + THREE.MathUtils.smoothstep(activation(6), i * .12, .5 + i * .12) * .9; });
+        growth.forEach((part, i) => { part.scale.y = 1 + state.opening * (i + 1) * .35; });
+      }
       wings.forEach((wing, i) => { wing.position.x = (i ? 1 : -1) * (1.6 + state.opening * 1.35); });
       frames[7].scale.setScalar(1 + state.opening * .32);
       return state;
     },
-    dispose() { if (disposed) return; disposed = true; geometries.forEach(item => item.dispose()); materials.forEach(item => item.dispose()); object.clear(); },
+    dispose() { if (disposed) return; disposed = true; floorLines.dispose(); posts.dispose(); geometries.forEach(item => item.dispose()); materials.forEach(item => item.dispose()); object.clear(); },
   };
 }

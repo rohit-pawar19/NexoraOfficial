@@ -13,9 +13,10 @@
   position: relative;
   display: flex;
   width: calc(200% + 2 * var(--client-gap));
-  will-change: transform;
   perspective: 1000px;
 }
+
+.client-motion.client-loop-playing .client-logo-track { will-change: transform; }
 
 .client-motion .portfolio-logo-grid {
   box-sizing: border-box;

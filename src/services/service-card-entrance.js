@@ -151,8 +151,9 @@ export function initServiceCardEntrance(layers) {
         for (const row of new Set(waiting.values())) row.trigger?.kill();
         waiting.clear();
         rows.forEach(register);
+      } else {
+        for (const row of new Set(waiting.values())) row.trigger?.refresh();
       }
-      ScrollTrigger.refresh();
     }
 
     function resize() {

@@ -112,6 +112,7 @@ export function initClientShowcase() {
       const shouldPlay = ready && visible && !document.hidden && !hovering && !focused && !drag && width > 0;
       if (shouldPlay === playing) return;
       playing = shouldPlay;
+      section.classList.toggle('client-loop-playing', playing);
       if (playing) gsap.ticker.add(tick);
       else gsap.ticker.remove(tick);
     }
@@ -194,7 +195,7 @@ export function initClientShowcase() {
       gsap.set(track, { clearProps: 'transform' });
       repeatedGrid.remove();
       viewport.removeAttribute('tabindex');
-      section.classList.remove('client-motion', 'client-entered', 'client-loop-ready');
+      section.classList.remove('client-motion', 'client-entered', 'client-loop-ready', 'client-loop-playing');
     };
   });
 

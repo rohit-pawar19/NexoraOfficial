@@ -35,6 +35,15 @@
   const collections = [...document.querySelectorAll(".portfolio-collection")];
   const status = document.getElementById("work-status");
   if (!filter || !status) return;
+  const previews = document.querySelectorAll("iframe[data-preview-src]");
+  const previewLoading = new IntersectionObserver((entries, observer) => {
+    for (const { target, isIntersecting } of entries) {
+      if (!isIntersecting || target.closest("[hidden]")) continue;
+      observer.unobserve(target);
+      target.src = target.dataset.previewSrc;
+    }
+  }, { rootMargin: "180px 0px" });
+  previews.forEach(preview => previewLoading.observe(preview));
 
   function updateGallery() {
     const showAll = filter.value === "all";
@@ -43,10 +52,6 @@
       collection.hidden = !showAll && collection.dataset.service !== filter.value;
       collection.querySelectorAll(".portfolio-card").forEach((card, index) => {
         card.hidden = collection.hidden || (showAll && collection.dataset.service !== "website" && index >= 4);
-        const preview = card.querySelector("iframe[data-preview-src]");
-        if (preview && !card.hidden && !preview.hasAttribute("src")) {
-          preview.src = preview.dataset.previewSrc;
-        }
         if (!card.hidden) visibleCount += 1;
         const video = card.querySelector("video");
         if (video && card.hidden) video.pause();

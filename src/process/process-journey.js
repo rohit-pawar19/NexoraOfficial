@@ -24,7 +24,7 @@ export function initProcessJourney() {
   const fill = document.createElement('div'); fill.className = 'process-progress-fill'; track.append(fill); meter.append(label, track);
   panel.append(viewport, meter); grid.before(route); route.append(panel, grid); section.classList.add('process-journey');
   const media = gsap.matchMedia();
-  let disposed = false, corridor = null, loading = false, visible = false, cinematic = false, active = -1, epoch = 0;
+  let disposed = false, corridor = null, loading = false, failed = false, visible = false, cinematic = false, active = -1, epoch = 0;
   const state = { progress: 0 };
   function activate(index, animate) {
     if (index === active) return;
@@ -48,14 +48,14 @@ export function initProcessJourney() {
     if (visible && !document.hidden) corridor?.render(state.progress, active);
   }
   function ensure() {
-    if (!cinematic || !visible || document.hidden || disposed || corridor || loading) return;
+    if (!cinematic || !visible || document.hidden || disposed || corridor || loading || failed) return;
     loading = true; const token = epoch;
     import('./process-corridor.js').then(({ mountProcessCorridor }) => {
       loading = false;
       if (token !== epoch) { ensure(); return; }
       if (disposed || !cinematic || !visible || document.hidden) return;
       corridor = mountProcessCorridor(viewport, state.progress, active); corridor.setVisible(visible && !document.hidden); paint();
-    }).catch(error => { loading = false; console.warn('Process journey using perspective fallback.', error); });
+    }).catch(error => { loading = false; failed = true; console.warn('Process journey using perspective fallback.', error); });
   }
   media.add({ desktop: '(min-width: 992px)', motion: '(prefers-reduced-motion: no-preference)' }, context => {
     cinematic = context.conditions.desktop && context.conditions.motion;
@@ -96,8 +96,8 @@ export function initProcessJourney() {
     corridor?.setVisible(visible && !document.hidden);
     if (entering) active = -1;
     if (visible) { ensure(); paint(); }
-  }, { rootMargin: '120px' });
-  observer.observe(route);
+  });
+  observer.observe(viewport);
   const visibility = () => { corridor?.setVisible(visible && !document.hidden); if (!document.hidden) { ensure(); paint(); } };
   document.addEventListener('visibilitychange', visibility);
   return () => {
