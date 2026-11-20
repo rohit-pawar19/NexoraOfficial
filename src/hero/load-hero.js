@@ -1,6 +1,11 @@
 export function loadHeroWhenVisible() {
   const hero = document.querySelector('#home.home-intro');
-  if (!hero || !('IntersectionObserver' in window)) return () => {};
+  const host = hero?.querySelector('.logo-animation');
+  if (!host) return () => {};
+  if (!('IntersectionObserver' in window)) {
+    host.classList.remove('ribbon-pending');
+    return () => {};
+  }
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const listeners = new AbortController();
@@ -12,19 +17,18 @@ export function loadHeroWhenVisible() {
 
   function ensure() {
     if (signal.aborted || !visible || document.hidden || reduced.matches || loading || dispose) return;
-    if (mount) {
-      dispose = mount();
-      observer.disconnect();
-      return;
-    }
     loading = true;
-    import('./hero-scene.js').then(({ initHero }) => {
+    (mount ? Promise.resolve(mount) : import('./hero-scene.js').then(({ initHero }) => initHero)).then(initHero => {
       loading = false;
       mount = initHero;
-      ensure();
+      if (signal.aborted || !visible || document.hidden || reduced.matches) return;
+      observer.disconnect();
+      dispose = mount();
     }).catch(error => {
       observer.disconnect();
-      console.warn('Hero artwork using the existing SVG fallback.', error);
+      if (signal.aborted) return;
+      host.classList.remove('ribbon-pending');
+      console.warn('The 3D hero artwork could not initialize.', error);
     });
   }
 

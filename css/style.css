@@ -240,134 +240,6 @@ body {
   max-width: 95%;
 }
 
-.logo-svg {
-  width: 100%;
-  display: block;
-}
-
-/* =========================
-   DRAWING MASK
-========================= */
-
-.draw-path {
-  fill: none;
-
-  stroke: white;
-
-  /*
-     Increase this if parts of your
-     real logo are not fully revealed.
-  */
-  stroke-width: 100;
-
-  stroke-linecap: round;
-  stroke-linejoin: round;
-
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-}
-
-/* Main infinity */
-
-.path1 {
-  animation: drawMain 3s ease-in-out infinite;
-}
-
-/* Top arc */
-
-.path2 {
-  stroke-width: 35;
-
-  animation: drawExtra 3s ease-in-out 0.25s infinite;
-}
-
-/* Upper right arc */
-
-.path3 {
-  stroke-width: 35;
-
-  animation: drawExtra 3s ease-in-out 0.5s infinite;
-}
-
-/* Bottom left arc */
-
-.path4 {
-  stroke-width: 35;
-
-  animation: drawExtra 3s ease-in-out 0.7s infinite;
-}
-
-/* 
-   MAIN DRAWING ANIMATION
-*/
-
-@keyframes drawMain {
-  0% {
-    stroke-dashoffset: 1000;
-  }
-
-  65% {
-    stroke-dashoffset: 0;
-  }
-
-  90% {
-    stroke-dashoffset: 0;
-  }
-
-  100% {
-    stroke-dashoffset: -1000;
-  }
-}
-
-/* Extra decorative lines */
-
-@keyframes drawExtra {
-  0% {
-    stroke-dashoffset: 1000;
-  }
-
-  60% {
-    stroke-dashoffset: 0;
-  }
-
-  90% {
-    stroke-dashoffset: 0;
-  }
-
-  100% {
-    stroke-dashoffset: -1000;
-  }
-}
-
-/* =========================
-   VERY LIGHT GOLD EFFECT
-========================= */
-
-.real-logo {
-  filter: none;
-  animation: softGold 2.5s ease-in-out infinite alternate;
-}
-
-@keyframes softGold {
-  from {
-    filter: drop-shadow(0 0 1px rgba(248, 200, 48, 0.18));
-  }
-
-  to {
-    filter: drop-shadow(0 0 4px rgba(248, 200, 48, 0.32));
-  }
-}
-
-/* =========================
-   MOVING GOLD LIGHT
-========================= */
-
-.moving-light {
-  fill: #f8e048;
-
-  filter: drop-shadow(0 0 2px #f8c830)
-    drop-shadow(0 0 5px rgba(248, 200, 48, 0.45));
-}
 .service-strip {
   position: relative;
   z-index: 4;
@@ -1942,16 +1814,6 @@ img {
   .floating-email:hover {
     transform: none;
   }
-  .draw-path,
-  .real-logo {
-    animation: none;
-  }
-  .draw-path {
-    stroke-dashoffset: 0;
-  }
-  .moving-light {
-    display: none;
-  }
 }
 
 /* Multi-page layout and homepage structure. */
@@ -1986,6 +1848,11 @@ h4 {
 .home-page .process,
 .home-page .values {
   background-color: #fbfaf7;
+}
+
+.home-page #root:empty {
+  min-height: 100vh;
+  background-color: #06123c;
 }
 
 .home-intro {

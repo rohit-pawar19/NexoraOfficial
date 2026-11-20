@@ -61,20 +61,23 @@ export function initHero() {
   let teardown = () => {};
 
   function start() {
-    // The original SVG remains the complete static, no-WebGL and reduced-motion fallback.
     if (preference.matches) return;
     const mobile = window.matchMedia('(max-width: 767px)').matches;
     const constrained = useConstrainedGraphics();
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !constrained, powerPreference: 'low-power' });
-    } catch { return; }
+    } catch {
+      host.classList.remove('ribbon-pending');
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, constrained ? 1.2 : 1.65));
     renderer.setClearColor(0x06123c, 0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = .95;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.setAttribute('aria-hidden', 'true');
+    host.classList.add('ribbon-pending');
     host.append(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(36, 1, .1, 50);
@@ -158,7 +161,7 @@ export function initHero() {
     const turnPose = new THREE.Quaternion();
     const verticalAxis = new THREE.Vector3(0, 1, 0);
     const turnSpeed = Math.PI * 2 / 18;
-    let turnAngle = 0, viewportWidth = 1, viewportHeight = 1, artworkBottom = 1;
+    let turnAngle = 0, viewportWidth = 0, viewportHeight = 0, artworkBottom = 1;
     let baseDistance = 8.7;
     // Project the real ribbon at its settled pose to exclude canvas whitespace.
     // A fixed anchor keeps the tagline stable during floating and rotation.
@@ -239,9 +242,10 @@ export function initHero() {
         : THREE.MathUtils.lerp(fittedDistance, required, 1 - Math.exp(-delta * 3));
       camera.position.setLength(fittedDistance);
     }
-    let frame = 0, visible = true, previous = 0, elapsed = 0;
+    let frame = 0, visible = true, previous = 0, elapsed = 0, ready = false;
     function render(now) {
       frame = requestAnimationFrame(render);
+      if (!viewportWidth || !viewportHeight) return;
       if (now - previous < (constrained ? 1000 / 30 - 1 : 16)) return;
       const delta = Math.min((now - previous) / 1000, .05);
       previous = now;
@@ -266,7 +270,11 @@ export function initHero() {
       camera.lookAt(0, 0, 0);
       fitRotatedSculpture(delta);
       renderer.render(scene, camera);
-      host.classList.add('ribbon-ready');
+      if (!ready && ribbons.some(({ mesh }) => mesh.geometry.drawRange.count > 0)
+          && !renderer.getContext().isContextLost()) {
+        ready = true;
+        host.classList.replace('ribbon-pending', 'ribbon-ready');
+      }
     }
     function playback() {
       cancelAnimationFrame(frame);
@@ -291,7 +299,7 @@ export function initHero() {
       environment.dispose();
       renderer.dispose();
       renderer.domElement.remove();
-      host.classList.remove('ribbon-ready');
+      host.classList.remove('ribbon-pending', 'ribbon-ready');
       host.style.removeProperty('--tagline-top');
       teardown = () => {};
     };

@@ -11,27 +11,20 @@
 }
 #home .logo-animation::before,
 #home .logo-animation::after { display: none; }
-#home .logo-animation > .logo-svg {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  transition: opacity .6s ease;
-}
-#home .logo-animation canvas {
+#home .logo-animation > canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity .24s ease-out;
 }
-#home .ribbon-ready > .logo-svg { opacity: 0; visibility: hidden; }
-#home .logo-animation .draw-path { animation: none; stroke-dashoffset: 0; }
-#home .logo-animation .real-logo { animation: none; }
-#home .logo-animation .moving-light { display: none; }
+#home .ribbon-ready > canvas { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  #home .ribbon-pending .hero-tagline-reveal { visibility: hidden; }
+}
 #home .home-intro-grid > :first-child { position: relative; z-index: 1; min-width: 0; }
 @media (max-width: 767.98px) {
   #home .logo-animation { height: clamp(230px, 62vw, 340px); }
-}
-@media (prefers-reduced-motion: reduce) {
-  #home .logo-animation > .logo-svg { transition: none; }
 }
