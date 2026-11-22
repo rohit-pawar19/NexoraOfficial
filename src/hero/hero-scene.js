@@ -4,7 +4,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { addTaglineEntrance } from './hero-tagline.js';
 import { fitRibbonVertices } from './hero-framing.js';
-import { useConstrainedGraphics } from '../motion/graphics-budget.js';
+import { createGraphicsMonitor, graphicsProfile, graphicsExhausted, watchGraphics, guardGraphics } from '../motion/graphics-budget.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -58,28 +58,28 @@ export function createRibbonGeometry(segments, strand) {
 export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
   const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
   let teardown = () => {};
+  let failed = false;
 
   function start() {
-    const staticPose = preference.matches;
-    if (staticPose && !intro?.active) return;
+    if (preference.matches || failed || graphicsExhausted()) return;
     const mobile = window.matchMedia('(max-width: 767px)').matches;
-    const constrained = useConstrainedGraphics();
+    const initial = graphicsProfile();
+    let profile = initial;
+    const monitor = createGraphicsMonitor();
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !constrained, powerPreference: 'low-power' });
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: initial.antialias, powerPreference: 'default' });
     } catch {
       host.classList.remove('ribbon-pending');
       intro?.fail();
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, constrained ? 1.2 : 1.65));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.dpr));
     renderer.setClearColor(0x06123c, 0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = .95;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.setAttribute('aria-hidden', 'true');
-    host.classList.add('ribbon-pending');
-    host.append(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(36, 1, .1, 50);
     const sculpture = new THREE.Group();
@@ -116,7 +116,7 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
     // never black. Their reflections follow the surface normals as it moves.
     panel(1.4, 7, [1.4, -.3, 5], .22, 0xffe4ad);
     panel(2, 4, [-2, -2, -4], .2, 0xffe4ad);
-    const environment = pmrem.fromScene(room, .025, .1, 100, { size: constrained ? 128 : 256 });
+    const environment = pmrem.fromScene(room, .025, .1, 100, { size: initial.environment });
     scene.environment = environment.texture;
     panels.forEach(mesh => { mesh.geometry.dispose(); mesh.material.dispose(); });
     pmrem.dispose();
@@ -151,7 +151,7 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
     fill.position.set(4, 1, 5);
     scene.add(key, rim, fill);
     const ribbons = Array.from({ length: mobile ? 2 : 3 }, (_, i) => {
-      const geometry = createRibbonGeometry(mobile ? 160 : constrained ? 220 : 320, i);
+      const geometry = createRibbonGeometry(initial.level === 'low' ? 120 : initial.level === 'medium' ? 220 : 320, i);
       // Each frustum constraint is linear in the ribbon's vertices. Its
       // maximum is on the hull, so interior points cannot affect the framing.
       const positions = geometry.getAttribute('position');
@@ -227,7 +227,7 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       sequence.to(motion, { entrance: 1, duration: 2.96, ease: 'power2.inOut' }, 0);
       // Includes the final strand settling and the camera entrance: 2.96 seconds.
       addTaglineEntrance(sequence, host, sequence.duration());
-      if (!staticPose) gsap.to(motion, { scroll: 1, ease: 'none', scrollTrigger: {
+      gsap.to(motion, { scroll: 1, ease: 'none', scrollTrigger: {
         trigger: hero, start: 'top top', end: 'bottom top', scrub: 1.2,
       } });
     }, hero);
@@ -257,12 +257,16 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
         : THREE.MathUtils.lerp(fittedDistance, required, 1 - Math.exp(-delta * 3));
       camera.position.setLength(fittedDistance);
     }
-    let frame = 0, visible = true, previous = 0, elapsed = 0, ready = false;
+    let frame = 0, visible = false, previous = 0, elapsed = 0, ready = false;
     let entranceReleased = !intro?.active;
+    let renderedAt = -Infinity;
+    let firstFrameTimeout;
     function render(now) {
-      frame = staticPose ? 0 : requestAnimationFrame(render);
+      frame = requestAnimationFrame(render);
       if (!viewportWidth || !viewportHeight) return;
-      if (!staticPose && now - previous < (constrained ? 1000 / 30 - 1 : 16)) return;
+      monitor.sample(now);
+      if (now < renderedAt + 1000 / profile.fps - 1) return;
+      renderedAt = Math.max(now - 1000 / profile.fps, renderedAt) + 1000 / profile.fps;
       const delta = Math.min((now - previous) / 1000, .05);
       previous = now;
       elapsed += delta;
@@ -272,59 +276,77 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       }
       // All loops share the visibility-paused clock, independent of the entrance timeline.
       // Fade their amplitudes in continuously so completing the entrance never resets a pose.
-      const idle = staticPose ? 0 : motion.entrance * motion.entrance;
+      const idle = motion.entrance * motion.entrance;
+      const reflectionMotion = profile.level === "low" ? 0 : idle;
       const movement = mobile ? .55 : 1;
       // Start the turntable after the shared entrance; never wrap or reverse its
       // angle. The existing visibility-paused render clock drives all motion.
-      if (!staticPose && motion.entrance === 1) turnAngle += delta * turnSpeed;
+      if (motion.entrance === 1) turnAngle += delta * turnSpeed;
       turnPose.setFromAxisAngle(verticalAxis, turnAngle);
       sculpture.quaternion.copy(turnPose).multiply(basePose);
       sculpture.position.y = Math.sin(elapsed * Math.PI * 2 / 4.8) * .05 * idle * movement;
       wave.time.value = elapsed * Math.PI * 2 / 7;
-      wave.amount.value = .018 * idle * movement;
+      wave.amount.value = .018 * reflectionMotion * movement;
       // Shift actual studio reflections rather than painting an emissive band on the gold.
-      scene.environmentRotation.y = Math.sin(elapsed * Math.PI * 2 / 6.5) * .24 * idle;
-      scene.environmentRotation.z = Math.sin(elapsed * Math.PI * 2 / 6.5) * .045 * idle;
+      scene.environmentRotation.y = Math.sin(elapsed * Math.PI * 2 / 6.5) * .24 * reflectionMotion;
+      scene.environmentRotation.z = Math.sin(elapsed * Math.PI * 2 / 6.5) * .045 * reflectionMotion;
       camera.position.set(.3 * (1 - motion.entrance) + motion.scroll * .35, .15 + motion.scroll * .3, baseDistance + (1 - motion.entrance) * 1.3 + motion.scroll * 1.15);
       camera.lookAt(0, 0, 0);
       fitRotatedSculpture(delta);
-      renderer.render(scene, camera);
+      try { renderer.render(scene, camera); } catch (error) { fallback(error); return; }
       if (!ready && ribbons.some(({ mesh }) => mesh.geometry.drawRange.count > 0)
           && !renderer.getContext().isContextLost()) {
         ready = true;
         host.classList.replace('ribbon-pending', 'ribbon-ready');
-        intro?.firstFrame();
+        clearTimeout(firstFrameTimeout);
       }
     }
     function playback() {
       cancelAnimationFrame(frame);
+      monitor.reset();
+      renderedAt = -Infinity;
       const playing = entranceReleased && (visible || intro?.active) && !document.hidden;
-      if (playing) { previous = performance.now(); frame = requestAnimationFrame(render); }
-      entranceTimeline.paused(staticPose || !playing);
+      clearTimeout(firstFrameTimeout);
+      if (playing) {
+        previous = performance.now();
+        frame = requestAnimationFrame(render);
+        if (!ready) firstFrameTimeout = setTimeout(fallback, 4000);
+      }
+      entranceTimeline.paused(!playing);
     }
     function beginEntrance(speed = 1) {
       entranceReleased = true;
       entranceTimeline.timeScale(speed);
-      if (staticPose) entranceTimeline.progress(1);
       playback();
     }
-    const resizeObserver = new ResizeObserver(() => {
-      resize();
-      if (staticPose && entranceReleased) playback();
-    });
+    const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(layoutHost);
     const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; playback(); });
-    observer.observe(hero);
+    observer.observe(layoutHost);
     document.addEventListener('visibilitychange', playback);
-    const lost = () => { teardown(); intro?.fail(); };
-    renderer.domElement.addEventListener('webglcontextlost', lost);
+    document.addEventListener('nexora:intro-finished', playback);
+    function fallback(error) {
+      failed = true;
+      teardown();
+      intro?.fail();
+      if (error instanceof Error) console.warn('Hero using the still artwork.', error);
+    }
+    const unguard = guardGraphics(renderer, fallback);
+    const unwatch = watchGraphics(() => {
+      if (graphicsExhausted()) { fallback(); return; }
+      profile = graphicsProfile();
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, profile.dpr));
+    });
     teardown = () => {
       cancelAnimationFrame(frame);
+      clearTimeout(firstFrameTimeout);
       context.revert();
       observer.disconnect();
       resizeObserver.disconnect();
       document.removeEventListener('visibilitychange', playback);
-      renderer.domElement.removeEventListener('webglcontextlost', lost);
+      document.removeEventListener('nexora:intro-finished', playback);
+      unguard();
+      unwatch();
       ribbons.forEach(({ mesh }) => mesh.geometry.dispose());
       material.dispose();
       environment.dispose();
@@ -335,6 +357,8 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       host.style.removeProperty('--tagline-top');
       teardown = () => {};
     };
+    host.classList.add('ribbon-pending');
+    host.append(renderer.domElement);
     if (intro?.active) intro.run(beginEntrance, entranceTimeline.duration());
     else playback();
   }

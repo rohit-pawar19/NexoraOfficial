@@ -99,9 +99,9 @@ export function initNavbarGlass() {
   };
   const observer = new MutationObserver(() => place(active()));
   links.forEach(link => observer.observe(link, { attributes: true, attributeFilter: ['class', 'aria-current'] }));
-  const resize = new ResizeObserver(() => place(selected || active(), true));
-  resize.observe(navbar);
-  links.forEach(link => resize.observe(link));
+  const resize = 'ResizeObserver' in window ? new ResizeObserver(() => place(selected || active(), true)) : null;
+  resize?.observe(navbar);
+  links.forEach(link => resize?.observe(link));
   listen(window, 'scroll', scroll, { passive: true });
   listen(window, 'resize', refresh, { passive: true });
   listen(reduced, 'change', refresh);
@@ -114,7 +114,7 @@ export function initNavbarGlass() {
     disposed = true;
     removers.forEach(remove => remove());
     observer.disconnect();
-    resize.disconnect();
+    resize?.disconnect();
     sweep?.kill();
     gsap.killTweensOf([navbar, indicator, ...links]);
     gsap.set(links, { clearProps: 'transform' });

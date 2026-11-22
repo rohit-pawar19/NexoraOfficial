@@ -73,6 +73,7 @@ export function initClientShowcase() {
   let entered = false;
 
   media.add('(prefers-reduced-motion: no-preference)', () => {
+    if (!('ResizeObserver' in window)) return;
     const listeners = new AbortController();
     const { signal } = listeners;
     const repeatedGrid = grid.cloneNode(true);

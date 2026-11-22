@@ -1,59 +1,61 @@
-import { createHeroIntro } from './hero-intro.js';
+﻿import { createHeroIntro } from './hero-intro.js';
+import { graphicsProfile, graphicsExhausted } from '../motion/graphics-budget.js';
 
 export function loadHeroWhenVisible() {
   const hero = document.querySelector('#home.home-intro');
   const host = hero?.querySelector('.logo-animation');
   const artwork = host?.querySelector('.hero-artwork');
-  if (!artwork) return () => {};
-  if (!('IntersectionObserver' in window) || !('ResizeObserver' in window)) {
-    artwork.classList.remove('ribbon-pending');
-    return () => {};
-  }
+  if (!artwork || !('IntersectionObserver' in window) || !('ResizeObserver' in window)) return () => {};
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const intro = createHeroIntro(host, artwork, reduced);
-  const listeners = new AbortController();
-  const { signal } = listeners;
+  const intro = reduced.matches ? undefined : createHeroIntro(host, artwork, reduced);
   let visible = false;
   let loading = false;
-  let mount;
+  let failed = false;
+  let cancelled = false;
   let dispose;
 
   function shouldMount() {
-    return !signal.aborted && !document.hidden
-      && (intro?.active || (visible && !reduced.matches));
+    if (cancelled || document.hidden || reduced.matches || graphicsExhausted() || !(intro?.active || visible)) return false;
+    const profile = graphicsProfile();
+    return Boolean(profile && (!intro?.active || profile.level !== 'low'));
   }
 
   function ensure() {
-    if (!shouldMount() || loading || dispose) return;
+    if (failed || loading || dispose || !shouldMount()) return;
     loading = true;
-    (mount ? Promise.resolve(mount) : import('./hero-scene.js').then(({ initHero }) => initHero)).then(initHero => {
+    import('./hero-scene.js').then(({ initHero }) => {
       loading = false;
-      mount = initHero;
       if (!shouldMount()) return;
-      observer.disconnect();
-      dispose = mount({ hero, host, artwork, intro });
+      dispose = initHero({ hero, host, artwork, intro });
     }).catch(error => {
-      observer.disconnect();
-      if (signal.aborted) return;
-      artwork.classList.remove('ribbon-pending');
+      if (cancelled) return;
+      failed = true;
+      artwork.classList.remove('ribbon-pending', 'ribbon-ready');
+      artwork.querySelector('canvas')?.remove();
       intro?.fail();
       console.warn('The 3D hero artwork could not initialize.', error);
     });
   }
-
   const observer = new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
+    artwork.classList.toggle('hero-artwork-visible', visible);
     ensure();
   });
-  observer.observe(hero);
-  reduced.addEventListener('change', ensure, { signal });
-  document.addEventListener('visibilitychange', ensure, { signal });
-  ensure();
+  observer.observe(host);
+  reduced.addEventListener('change', ensure);
+  document.addEventListener('visibilitychange', ensure);
+  intro?.finished.then(ensure);
+  const introProfile = intro?.active ? graphicsProfile() : undefined;
+  if (intro?.active && (!introProfile || introProfile.level === 'low')) intro.runLightweight();
+  else ensure();
 
   return () => {
-    listeners.abort();
+    cancelled = true;
     observer.disconnect();
+    artwork.classList.remove('hero-artwork-visible');
+    reduced.removeEventListener('change', ensure);
+    document.removeEventListener('visibilitychange', ensure);
     intro?.dispose();
     dispose?.();
   };

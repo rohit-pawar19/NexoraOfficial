@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import { gsap } from 'gsap';
 import { createServiceModel } from './service-models.js';
-import { useConstrainedGraphics } from '../motion/graphics-budget.js';
+import { graphicsProfile, createGraphicsMonitor, guardGraphics } from '../motion/graphics-budget.js';
 
 // One offscreen WebGL context, shared between small local 2D presentation canvases.
 // Only the active card renders at 30 fps. Exiting cards retain a frozen frame.
-export function createServiceStudio() {
-  const constrained = useConstrainedGraphics();
-  const renderWidth = constrained ? 384 : 480;
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !constrained, powerPreference: 'low-power' });
-  renderer.setPixelRatio(1); renderer.setSize(renderWidth, renderWidth * .75);
+export function createServiceStudio(fail) {
+  const initial = graphicsProfile();
+  const monitor = createGraphicsMonitor();
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: initial.antialias, powerPreference: 'default' });
+  renderer.setPixelRatio(1);
   renderer.setClearColor('#06123c', 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = .98;
   renderer.transmissionResolutionScale = .5;
@@ -25,26 +25,32 @@ export function createServiceStudio() {
     const panel = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material); panel.position.set(...position); panel.lookAt(0, 0, 0);
     room.add(panel); panels.push(panel);
   }
-  const environment = pmrem.fromScene(room, .035, .1, 100, { size: constrained ? 128 : 256 });
+  const environment = pmrem.fromScene(room, .035, .1, 100, { size: initial.environment });
   panels.forEach(panel => { panel.geometry.dispose(); panel.material.dispose(); }); pmrem.dispose();
   const entries = new Set();
+  const unguard = guardGraphics(renderer, fail);
   let listening = false, disposed = false;
   function schedule() {
     const needed = !document.hidden && [...entries].some(entry => entry.visible);
     if (needed && !listening) { gsap.ticker.add(tick); listening = true; }
-    if (!needed && listening) { gsap.ticker.remove(tick); listening = false; }
+    if (!needed && listening) { gsap.ticker.remove(tick); listening = false; monitor.reset(); }
   }
   function tick(time) {
+    monitor.sample(performance.now());
+    const profile = graphicsProfile();
     for (const entry of entries) {
       if (!entry.visible || document.hidden) continue;
-      const interval = 1 / 30;
+      const interval = 1 / profile.fps - .001;
       if (time - entry.last < interval) continue;
       entry.time += Math.min(time - (entry.last || time), .15); entry.last = time;
       const { width, height } = entry;
       if (!width || !height) continue;
-      const scale = Math.min(devicePixelRatio || 1, constrained ? 1 : 1.5);
-      const outputWidth = Math.min(renderWidth, Math.round(width * scale));
-      const outputHeight = Math.round(outputWidth * height / width);
+      const scale = Math.min(devicePixelRatio || 1, profile.dpr);
+      const outputWidth = Math.max(1, Math.min(profile.cardWidth, Math.round(width * scale)));
+      const outputHeight = Math.max(1, Math.round(outputWidth * height / width));
+      if (renderer.domElement.width !== outputWidth || renderer.domElement.height !== outputHeight) {
+        renderer.setSize(outputWidth, outputHeight, false);
+      }
       if (entry.canvas.width !== outputWidth || entry.canvas.height !== outputHeight) {
         entry.canvas.width = outputWidth; entry.canvas.height = outputHeight;
       }
@@ -61,9 +67,13 @@ export function createServiceStudio() {
       }
       entry.key.position.x = -2.5 + entry.motion.pointer.x * .35;
       entry.scene.environmentRotation.y = entry.motion.pointer.x * .08 * entry.motion.hover + Math.sin(entry.time * .3) * .055;
-      renderer.render(entry.scene, entry.camera);
-      entry.context.clearRect(0, 0, outputWidth, outputHeight);
-      entry.context.drawImage(renderer.domElement, 0, 0, outputWidth, outputHeight);
+      renderer.transmissionResolutionScale = profile.transmission;
+      try {
+        renderer.render(entry.scene, entry.camera);
+        if (renderer.getContext().isContextLost()) return;
+        entry.context.clearRect(0, 0, outputWidth, outputHeight);
+        entry.context.drawImage(renderer.domElement, 0, 0, outputWidth, outputHeight);
+      } catch (error) { fail(error); return; }
       if (!entry.ready) {
         entry.ready = true;
         entry.host.classList.add('has-studio-model');
@@ -116,6 +126,7 @@ export function createServiceStudio() {
       };
     },
     dispose() {
+      unguard();
       disposed = true; gsap.ticker.remove(tick); listening = false;
       resize.disconnect(); byHost.clear();
       document.removeEventListener('visibilitychange', visibility);

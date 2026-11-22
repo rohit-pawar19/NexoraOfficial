@@ -7,7 +7,7 @@ export function journeyPosition(progress) {
     opening: THREE.MathUtils.smoothstep(p, .87, 1) };
 }
 
-export function createProcessCorridorModel() {
+export function createProcessCorridorModel({ simplified = false } = {}) {
   const object = new THREE.Group(), geometries = new Set(), materials = new Set();
   const gold = new THREE.MeshPhysicalMaterial({ color: '#d4af37', metalness: 1, roughness: .16, envMapIntensity: 1.3 });
   const navy = new THREE.MeshStandardMaterial({ color: '#102443', metalness: .45, roughness: .38 });
@@ -21,7 +21,7 @@ export function createProcessCorridorModel() {
     const part = mesh(new THREE.BoxGeometry(w, h, d), material, parent); part.position.set(...position); return part;
   }
   const frames = [], details = [];
-  const ringGeometry = new THREE.TorusGeometry(1.72, .045, 12, 80);
+  const ringGeometry = new THREE.TorusGeometry(1.72, .045, simplified ? 8 : 12, simplified ? 56 : 80);
   for (let i = 0; i < PROCESS_STAGE_COUNT; i++) {
     const station = new THREE.Group(); station.position.z = -i * 5.2; object.add(station);
     const material = gold.clone(); materials.add(material);

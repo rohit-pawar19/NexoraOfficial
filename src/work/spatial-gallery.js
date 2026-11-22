@@ -12,7 +12,7 @@ export function initSpatialGallery() {
     motion: '(prefers-reduced-motion: no-preference)',
     touch: '(hover: none), (pointer: coarse)',
   }, ({ conditions }) => {
-    if (!conditions.motion) return;
+    if (!conditions.motion || !('IntersectionObserver' in window)) return;
 
     const listeners = new AbortController();
     const { signal } = listeners;

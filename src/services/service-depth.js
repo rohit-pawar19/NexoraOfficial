@@ -1,3 +1,4 @@
+import { canRenderGraphics, graphicsProfile, watchGraphics } from '../motion/graphics-budget.js';
 import { gsap } from 'gsap';
 import { createServiceEntrance, SERVICE_TIMING } from './service-timing.js';
 import { createServiceCardMotion } from './service-card-motion.js';
@@ -77,7 +78,7 @@ function createIdle(object, type) {
 export function initServiceDepth() {
   const cards = [...document.querySelectorAll('.services-page .service-card')]
     .filter(card => designs[card.dataset.service] && card.querySelector('.service-image'));
-  if (!cards.length) return () => {};
+  if (!cards.length || !('ResizeObserver' in window)) return () => {};
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
   const cardMotion = createServiceCardMotion(cards, reduced, fine);
@@ -91,13 +92,23 @@ export function initServiceDepth() {
   function releaseProduct(state) {
     state.product?.dispose(); state.product = null;
   }
+  function permitted() {
+    return 'ResizeObserver' in window && canRenderGraphics() && graphicsProfile().level !== 'low';
+  }
+  function failStudio(error) {
+    studioFailed = true;
+    studio?.dispose();
+    studio = null;
+    for (const state of states.values()) state.product = null;
+    if (error instanceof Error) console.warn('Services using lightweight miniatures.', error);
+  }
   function attachProduct(card) {
     const state = states.get(card);
-    if (disposed || active !== card || !state.visible || document.hidden || reduced.matches || !fine.matches || studioFailed) return;
+    if (disposed || active !== card || !state.visible || document.hidden || reduced.matches || studioFailed || !permitted()) return;
     if (studio) {
       if (!state.product) {
-        state.product = studio.add(state.visual, state.type, state.motion);
-        state.fallback?.kill(); state.idle?.pause();
+        try { state.product = studio.add(state.visual, state.type, state.motion); }
+        catch (error) { failStudio(error); }
       }
       return;
     }
@@ -105,12 +116,11 @@ export function initServiceDepth() {
     // Import and allocate a GPU context only after an actual card activation.
     loading = import('./service-studio.js').then(({ createServiceStudio }) => {
       loading = null;
-      if (disposed || !states.get(active)?.visible || document.hidden || reduced.matches || !fine.matches) return;
-      studio = createServiceStudio();
+      if (disposed || !states.get(active)?.visible || document.hidden || reduced.matches || !permitted()) return;
+      studio = createServiceStudio(failStudio);
       attachProduct(active);
     }).catch(error => {
-      loading = null; studioFailed = true;
-      console.warn('Services studio unavailable; using lightweight miniatures.', error);
+      loading = null; failStudio(error);
     });
   }
   function deactivate(immediate = false) {
@@ -211,14 +221,14 @@ export function initServiceDepth() {
       deactivate(); card.querySelector('.card-link')?.click();
     });
   }
-  const observer = new IntersectionObserver(entries => {
+  const observer = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
     entries.forEach(entry => {
       states.get(entry.target).visible = entry.isIntersecting;
       if (!entry.isIntersecting && entry.target === active) deactivate(true);
     });
     // Visibility alone must never import models, reveal objects, or start motion.
-  }, { threshold: .05 });
-  cards.forEach(card => observer.observe(card));
+  }, { threshold: .05 }) : null;
+  cards.forEach(card => observer?.observe(card));
   listen(document, 'pointerdown', event => { if (active && !active.contains(event.target)) deactivate(); }, { passive: true });
   listen(document, 'keydown', event => { if (event.key === 'Escape') deactivate(); });
   listen(document, 'visibilitychange', () => { if (document.hidden) deactivate(true); });
@@ -229,8 +239,15 @@ export function initServiceDepth() {
   }
   listen(reduced, 'change', () => { if (reduced.matches) releaseStudio(); });
   listen(fine, 'change', releaseStudio);
+  const unwatch = watchGraphics(() => {
+    if (!permitted()) {
+      studio?.dispose();
+      studio = null;
+      for (const state of states.values()) state.product = null;
+    }
+  });
   return () => {
-    disposed = true; deactivate(true); observer.disconnect(); removers.forEach(remove => remove());
+    disposed = true; unwatch(); deactivate(true); observer?.disconnect(); removers.forEach(remove => remove());
     states.forEach(({ visual, image, object, motion, idle, entrance, fallback, exit, product }, card) => {
       idle?.kill(); entrance?.kill(); fallback?.kill(); exit?.kill(); product?.dispose();
       gsap.killTweensOf([card, image, visual, object, motion, motion.pointer]);

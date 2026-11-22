@@ -70,6 +70,7 @@ body.enquiry-open { overflow: hidden; }
 .portfolio-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 .portfolio-collection[data-service="events"] .portfolio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .portfolio-collection[data-service="events"] .portfolio-image-link img { aspect-ratio: 2 / 1; object-fit: cover; }
+.portfolio-collection[data-service="events"] .velesta-event-photo { object-position: center 25%; }
 .portfolio-card { margin: 0; min-width: 0; }
 .portfolio-image-link { display: block; position: relative; background: #eeeae2; }
 .portfolio-image-link img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; }

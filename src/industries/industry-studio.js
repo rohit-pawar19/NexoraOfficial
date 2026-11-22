@@ -1,28 +1,29 @@
 ﻿import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createIndustryWorld, frameIndustryCamera } from './industry-models.js';
-import { useConstrainedGraphics } from '../motion/graphics-budget.js';
+import { graphicsProfile, createGraphicsMonitor, guardGraphics } from '../motion/graphics-budget.js';
 
 // Each card retains a still on its own 2D canvas. Only invalidated views use the shared GPU.
-export function createIndustryStudio() {
-  const constrained = useConstrainedGraphics();
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !constrained, powerPreference: 'low-power' });
+export function createIndustryStudio(fail) {
+  const initial = graphicsProfile();
+  const monitor = createGraphicsMonitor();
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: initial.antialias, powerPreference: 'default' });
   renderer.setPixelRatio(1);
   renderer.setClearColor('#06123c', 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = .99;
   renderer.transmissionResolutionScale = .65;
-  renderer.shadowMap.enabled = !constrained;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = Boolean(initial.shadows);
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const pmrem = new THREE.PMREMGenerator(renderer);
   const room = new RoomEnvironment();
-  const environment = pmrem.fromScene(room, .028, .1, 100, { size: constrained ? 128 : 256 });
+  const environment = pmrem.fromScene(room, .028, .1, 100, { size: initial.environment });
   room.dispose();
   pmrem.dispose();
   const entries = new Set();
   const pending = new Set();
   let frame = 0, lastFrame = -Infinity;
-  const maxWidth = constrained ? 384 : 640;
+  const unguard = guardGraphics(renderer, fail);
   const byHost = new Map();
   const resize = new ResizeObserver(entries => {
     for (const { target, contentRect } of entries) {
@@ -41,7 +42,9 @@ export function createIndustryStudio() {
   function draw(now) {
     frame = 0;
     if (document.hidden) return;
-    if (now - lastFrame < (constrained ? 1000 / 30 - 1 : 1000 / 60 - 1)) {
+    monitor.sample(now);
+    const profile = graphicsProfile();
+    if (now - lastFrame < 1000 / profile.fps - 1) {
       schedule();
       return;
     }
@@ -56,7 +59,7 @@ export function createIndustryStudio() {
         return;
       }
       const aspect = entry.width / entry.height;
-      const width = Math.max(1, Math.min(maxWidth, Math.round(entry.width * (constrained ? 1 : 1.5))));
+      const width = Math.max(1, Math.min(profile.cardWidth, Math.round(entry.width * Math.min(devicePixelRatio || 1, profile.dpr))));
       const height = Math.max(1, Math.round(width / aspect));
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
@@ -74,9 +77,19 @@ export function createIndustryStudio() {
       sweep.position.x = -2.5 + 5 * position;
       sweep.intensity = hit * (state.type === 'jewellery' ? 2.1 : 2.6);
       scene.environmentRotation.y = state.accent * .32;
-      renderer.render(scene, camera);
-      context.clearRect(0, 0, width, height);
-      context.drawImage(renderer.domElement, 0, 0, width, height);
+      renderer.transmissionResolutionScale = profile.transmission;
+      renderer.shadowMap.enabled = Boolean(profile.shadows);
+      if (key.shadow.mapSize.x !== profile.shadows && profile.shadows) {
+        key.shadow.dispose();
+        key.shadow.map = null;
+        key.shadow.mapSize.setScalar(profile.shadows);
+      }
+      try {
+        renderer.render(scene, camera);
+        if (renderer.getContext().isContextLost()) return;
+        context.clearRect(0, 0, width, height);
+        context.drawImage(renderer.domElement, 0, 0, width, height);
+      } catch (error) { fail(error); return; }
       if (!entry.ready) {
         entry.ready = true;
         host.classList.add('has-industry-world');
@@ -103,8 +116,8 @@ export function createIndustryStudio() {
       camera.lookAt(...model.camera.target);
       const key = new THREE.DirectionalLight('#fff4df', 1.6);
       key.position.set(-3, 4, 4);
-      key.castShadow = !constrained;
-      key.shadow.mapSize.set(512, 512);
+      key.castShadow = Boolean(initial.shadows);
+      key.shadow.mapSize.setScalar(initial.shadows);
       Object.assign(key.shadow.camera, { left: -2, right: 2, top: 2, bottom: -2, near: .1, far: 12 });
       key.shadow.bias = -.0002;
       key.shadow.normalBias = .008;
@@ -127,6 +140,7 @@ export function createIndustryStudio() {
         dispose() {
           if (!entries.delete(entry)) return;
           pending.delete(entry);
+          if (!pending.size) monitor.reset();
           byHost.delete(host);
           resize.unobserve(host);
           model.dispose();
@@ -141,6 +155,7 @@ export function createIndustryStudio() {
       return product;
     },
     dispose() {
+      unguard();
       cancelAnimationFrame(frame);
       resize.disconnect();
       document.removeEventListener('visibilitychange', schedule);

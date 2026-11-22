@@ -1,6 +1,7 @@
 #process.process-journey .process-route { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: start; }
 #process.process-journey .process-panel { position: sticky; top: 108px; z-index: 3; min-width: 0; border-radius: 16px; overflow: hidden; background: #06123c; }
-#process.process-journey .process-viewport { display: none; position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #173451, #06123c 70%); }
+#process.process-journey .process-viewport { position: relative; height: clamp(90px, 17vh, 140px); overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #173451, #06123c 70%); }
+#process .process-viewport:not(.has-process-corridor) canvas { visibility: hidden; }
 #process .process-viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 #process .process-corridor-fallback { position: absolute; inset: 15% 15% 18%; perspective: 400px; }
 #process .process-corridor-fallback i { position: absolute; inset: calc(var(--frame) * 5%); border: 1px solid #d4af37; border-radius: 45%; opacity: calc(.85 - var(--frame) * .08); transform: rotateY(-5deg); }
@@ -16,7 +17,7 @@
 #process.process-journey .process-item p { line-height: 1.7; max-width: 36ch; }
 @media (min-width: 992px) {
   #process.process-cinematic .process-route { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: clamp(30px, 5vw, 72px); }
-  #process.process-cinematic .process-viewport { display: block; height: clamp(330px, 57vh, 580px); }
+  #process.process-cinematic .process-viewport { height: clamp(330px, 57vh, 580px); }
   #process.process-cinematic .process-panel { top: 118px; }
   #process.process-cinematic .process-item { min-height: clamp(250px, 38vh, 380px); display: flex; flex-direction: column; justify-content: center; padding-left: 32px; }
   #process.process-cinematic .process-item::before { top: calc(50% - 28px); }
@@ -25,4 +26,47 @@
 }
 @media (prefers-reduced-motion: reduce) {
   #process.process-journey .process-item { transition: none; }
+}
+@media (max-height: 460px) {
+  #process.process-journey .process-panel { position: relative; top: auto; }
+}
+@media (max-width: 767.98px) {
+  #process > .container { padding-inline: 16px; }
+  #process .center-heading { margin-bottom: 26px; }
+  #process .process-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+  }
+  #process .process-item {
+    min-height: 0;
+    padding: 24px;
+    border: 1px solid #e3e7ef;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 2px 7px rgba(6, 18, 60, .06), 0 9px 20px -5px rgba(6, 18, 60, .16);
+    text-align: left;
+  }
+  #process .process-item b {
+    display: block;
+    color: #98701f;
+    font-size: 14px;
+  }
+  #process .process-item h3 {
+    margin: 6px 0 5px;
+    color: #0a2b80;
+    font-size: 21px;
+  }
+  #process .process-item p {
+    margin: 0;
+    color: #667085;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .process-cards-in-view :is(.floating-whatsapp, .floating-email, .back-to-top) {
+    visibility: hidden;
+  }
 }

@@ -40,6 +40,8 @@ export function createHeroIntro(host, artwork, reduced) {
   let watchdog;
   let active = true;
   let releaseEntrance;
+  let resolveFinished;
+  const finished = new Promise(resolve => { resolveFinished = resolve; });
 
   document.body.append(dialog);
   try {
@@ -94,6 +96,8 @@ export function createHeroIntro(host, artwork, reduced) {
     } finally {
       document.documentElement.classList.remove('brand-intro-open');
       dialog.remove();
+      resolveFinished();
+      document.dispatchEvent(new Event("nexora:intro-finished"));
     }
     releaseEntrance?.();
     audio.dispose();
@@ -134,11 +138,6 @@ export function createHeroIntro(host, artwork, reduced) {
       beginEntrance(speed);
     };
     clearTimeout(watchdog);
-    if (reduced.matches) {
-      watchdog = setTimeout(() => handoff(), 4500);
-      releaseEntrance();
-      return;
-    }
     const entranceStart = .2;
     const impact = 3.65;
     watchdog = setTimeout(() => handoff(), 10000);
@@ -161,12 +160,6 @@ export function createHeroIntro(host, artwork, reduced) {
     }, [], 6.5);
   }
 
-  function firstFrame() {
-    if (active && reduced.matches && !transition) {
-      sequence = gsap.timeline().call(() => handoff(), [], .55);
-    }
-  }
-
   skip.addEventListener('click', () => handoff(), { signal });
   dialog.addEventListener('cancel', event => { event.preventDefault(); handoff(); }, { signal });
   dialog.addEventListener('close', () => finish(), { signal });
@@ -174,11 +167,16 @@ export function createHeroIntro(host, artwork, reduced) {
   window.addEventListener('pagehide', () => finish(false), { signal });
   // Escape hatch for a stalled import or renderer. Normal playback uses the scene timeline.
   watchdog = setTimeout(() => handoff(), 4500);
-  if (!reduced.matches) audio.tryAutoplay();
+  audio.tryAutoplay();
 
   return {
     get active() { return active; },
-    run, firstFrame, fail: () => handoff(),
+    finished, run,
+    runLightweight() {
+      dialog.classList.add("brand-intro-lightweight");
+      run(() => {}, 3.45);
+    },
+    fail: () => handoff(),
     dispose: () => finish(false),
   };
 }

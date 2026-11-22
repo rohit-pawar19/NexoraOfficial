@@ -20,6 +20,7 @@ module.exports = defineConfig({
     include: ['three', 'three/addons/environments/RoomEnvironment.js', 'gsap', 'gsap/ScrollTrigger'],
   },
   build: {
+    target: ['chrome87', 'edge88', 'firefox78', 'safari14'],
     rollupOptions: {
       input: Object.fromEntries(pages.map(name => [name, resolve(root, `${name}.html`)])),
     },

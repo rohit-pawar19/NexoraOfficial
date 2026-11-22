@@ -1,3 +1,4 @@
+import { canRenderGraphics, graphicsProfile, watchGraphics } from '../motion/graphics-budget.js';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './process-journey.css';
@@ -11,6 +12,60 @@ export function initProcessJourney() {
   if (!grid) return () => {};
   const items = [...grid.querySelectorAll('.process-item')];
   if (items.length !== 8) return () => {};
+
+  const wide = matchMedia('(min-width: 768px)');
+  let dispose;
+  function updateLayout() {
+    dispose?.();
+    dispose = undefined;
+    if (!('IntersectionObserver' in window)) return;
+    dispose = wide.matches ? initProcessTunnel(section, grid, items) : initProcessCards(grid, items);
+  }
+  wide.addEventListener('change', updateLayout);
+  updateLayout();
+  return () => {
+    wide.removeEventListener('change', updateLayout);
+    dispose?.();
+  };
+}
+
+function initProcessCards(grid, items) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const animations = new Set();
+  const setCardsInView = visible => document.body.classList.toggle('process-cards-in-view', visible);
+  function clearAnimations() {
+    for (const animation of animations) animation.cancel();
+    animations.clear();
+  }
+  const observer = new IntersectionObserver(entries => {
+    for (const { target, isIntersecting } of entries) {
+      if (target === grid) {
+        setCardsInView(isIntersecting);
+        continue;
+      }
+      if (!isIntersecting || reduced.matches || !target.animate) continue;
+      observer.unobserve(target);
+      // Cards remain visible by default, including before the observer runs.
+      const animation = target.animate([
+        { opacity: .55, transform: 'translateY(10px)' },
+        { opacity: 1, transform: 'translateY(0)' },
+      ], { duration: 420, easing: 'ease-out' });
+      animations.add(animation);
+      animation.onfinish = () => animations.delete(animation);
+    }
+  });
+  observer.observe(grid);
+  items.forEach(item => observer.observe(item));
+  reduced.addEventListener('change', clearAnimations);
+  return () => {
+    observer.disconnect();
+    clearAnimations();
+    reduced.removeEventListener('change', clearAnimations);
+    setCardsInView(false);
+  };
+}
+
+function initProcessTunnel(section, grid, items) {
   const names = items.map(item => item.querySelector('h3').textContent);
   const route = document.createElement('div'); route.className = 'process-route';
   const panel = document.createElement('div'); panel.className = 'process-panel';
@@ -24,7 +79,7 @@ export function initProcessJourney() {
   const fill = document.createElement('div'); fill.className = 'process-progress-fill'; track.append(fill); meter.append(label, track);
   panel.append(viewport, meter); grid.before(route); route.append(panel, grid); section.classList.add('process-journey');
   const media = gsap.matchMedia();
-  let disposed = false, corridor = null, loading = false, failed = false, visible = false, cinematic = false, active = -1, epoch = 0;
+  let disposed = false, corridor = null, loading = false, failed = false, visible = false, motionAllowed = false, cinematic = false, active = -1, epoch = 0;
   const state = { progress: 0 };
   function activate(index, animate) {
     if (index === active) return;
@@ -47,18 +102,31 @@ export function initProcessJourney() {
     fill.style.transform = `scaleX(${(.08 + state.progress * .92).toFixed(4)})`;
     if (visible && !document.hidden) corridor?.render(state.progress, active);
   }
+  function permitted() {
+    return 'ResizeObserver' in window && canRenderGraphics() && graphicsProfile().level !== 'low';
+  }
+  function releaseCorridor() {
+    corridor?.dispose();
+    corridor = null;
+  }
+  function failCorridor(error) {
+    failed = true;
+    releaseCorridor();
+    if (error instanceof Error) console.warn('Process journey using perspective fallback.', error);
+  }
   function ensure() {
-    if (!cinematic || !visible || document.hidden || disposed || corridor || loading || failed) return;
+    if (!motionAllowed || !visible || document.hidden || disposed || corridor || loading || failed || !permitted()) return;
     loading = true; const token = epoch;
     import('./process-corridor.js').then(({ mountProcessCorridor }) => {
       loading = false;
       if (token !== epoch) { ensure(); return; }
-      if (disposed || !cinematic || !visible || document.hidden) return;
-      corridor = mountProcessCorridor(viewport, state.progress, active); corridor.setVisible(visible && !document.hidden); paint();
-    }).catch(error => { loading = false; failed = true; console.warn('Process journey using perspective fallback.', error); });
+      if (disposed || !motionAllowed || !visible || document.hidden || !permitted()) return;
+      corridor = mountProcessCorridor(viewport, state.progress, active, failCorridor); corridor.setVisible(visible && !document.hidden); paint();
+    }).catch(error => { loading = false; failCorridor(error); });
   }
   media.add({ desktop: '(min-width: 992px)', motion: '(prefers-reduced-motion: no-preference)' }, context => {
-    cinematic = context.conditions.desktop && context.conditions.motion;
+    motionAllowed = context.conditions.motion;
+    cinematic = context.conditions.desktop && motionAllowed;
     section.classList.toggle('process-cinematic', cinematic);
     active = -1;
     const triggers = [];
@@ -73,16 +141,16 @@ export function initProcessJourney() {
         end: () => `bottom-=${items[7].offsetHeight / 2} 50%`,
         scrub: .85, invalidateOnRefresh: true,
       } });
-      ensure();
     } else {
       items.forEach((item, index) => {
         const select = () => { state.progress = index / 7; paint(); };
         triggers.push(ScrollTrigger.create({ trigger: item, start: 'top 65%', end: 'bottom 35%', onEnter: select, onEnterBack: select }));
       });
     }
+    ensure();
     paint();
     return () => {
-      epoch++; cinematic = false; travel?.scrollTrigger?.kill(); travel?.kill(); triggers.forEach(trigger => trigger.kill());
+      epoch++; motionAllowed = cinematic = false; travel?.scrollTrigger?.kill(); travel?.kill(); triggers.forEach(trigger => trigger.kill());
       corridor?.dispose(); corridor = null;
       items.forEach(item => {
         const text = item.querySelectorAll('h3, p'); gsap.killTweensOf(text); gsap.set(text, { clearProps: 'transform,opacity' });
@@ -99,8 +167,11 @@ export function initProcessJourney() {
   });
   observer.observe(viewport);
   const visibility = () => { corridor?.setVisible(visible && !document.hidden); if (!document.hidden) { ensure(); paint(); } };
+  const unwatch = watchGraphics(() => { if (!permitted()) releaseCorridor(); });
+  document.addEventListener('nexora:intro-finished', ensure);
   document.addEventListener('visibilitychange', visibility);
   return () => {
+    unwatch(); document.removeEventListener('nexora:intro-finished', ensure);
     disposed = true; media.revert(); observer.disconnect(); document.removeEventListener('visibilitychange', visibility);
     corridor?.dispose(); route.before(grid); route.remove(); section.classList.remove('process-journey', 'process-cinematic');
     items.forEach(item => { item.classList.remove('is-process-active'); item.removeAttribute('aria-current'); });

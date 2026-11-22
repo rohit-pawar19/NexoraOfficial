@@ -26,3 +26,8 @@
   #industry .industry-card { transition: none; }
   #industry .industry-card:hover { transform: none; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  #industry .industry-world svg { transition: transform .5s ease; }
+  #industry .is-world-selected .industry-world svg { transform: scale(1.08); }
+}

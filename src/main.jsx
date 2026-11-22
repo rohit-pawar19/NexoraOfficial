@@ -89,6 +89,6 @@ function SitePage({ markup }) {
   return content;
 }
 
-(Object.hasOwn(pages, page) ? pages[page] : pages['index.html'])()
+(Object.prototype.hasOwnProperty.call(pages, page) ? pages[page] : pages['index.html'])()
   .then(({ default: markup }) => createRoot(document.getElementById('root')).render(<SitePage markup={markup} />))
   .catch(console.error);

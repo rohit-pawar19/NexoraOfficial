@@ -1,4 +1,5 @@
-﻿import { gsap } from 'gsap';
+import { canRenderGraphics, graphicsProfile, watchGraphics } from '../motion/graphics-budget.js';
+import { gsap } from 'gsap';
 import { INDUSTRY_WORLDS, WORLD_DURATIONS, WORLD_IDLE } from './industry-timing.js';
 import './industry-worlds.css';
 
@@ -10,7 +11,7 @@ const previews = {
 
 export function initIndustryWorlds() {
   const section = document.getElementById('industry');
-  if (!section || !('IntersectionObserver' in window) || !('ResizeObserver' in window)) return () => {};
+  if (!section) return () => {};
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const touch = matchMedia('(hover: none), (pointer: coarse)');
   const listeners = new AbortController();
@@ -19,8 +20,21 @@ export function initIndustryWorlds() {
   let active, studio, loading, createStudio, failed;
   let near = false;
 
+  function releaseStudio() {
+    studio?.dispose();
+    studio = null;
+    for (const state of states.values()) state.product = null;
+  }
+  function failStudio(error) {
+    failed = true;
+    releaseStudio();
+    if (error instanceof Error) console.warn('Industry using the idle previews.', error);
+  }
+  function permitted() {
+    return visibility && resize && canRenderGraphics() && graphicsProfile().level !== 'low';
+  }
   function hydrate() {
-    if (!near || document.hidden || signal.aborted || reduced.matches || failed) return;
+    if (!near || document.hidden || signal.aborted || reduced.matches || failed || !active?.visible || !permitted()) return;
     if (!createStudio) {
       if (loading) return;
       loading = import('./industry-studio.js').then(({ createIndustryStudio }) => {
@@ -32,11 +46,10 @@ export function initIndustryWorlds() {
     const state = active;
     if (!state?.visible || state.product) return;
     try {
-      studio ??= createStudio();
+      studio ??= createStudio(failStudio);
       state.product = studio.add(state.host, state);
     } catch (error) {
-      failed = true;
-      console.warn('Industry studio unavailable; using the idle previews.', error);
+      failStudio(error);
     }
   }
 
@@ -64,7 +77,7 @@ export function initIndustryWorlds() {
     state.timeline.timeScale(1).play();
   }
 
-  const resize = new ResizeObserver(() => {
+  function measure() {
     const heights = [];
     for (const { card, host } of states.values()) {
       const heading = card.querySelector('h3');
@@ -73,8 +86,9 @@ export function initIndustryWorlds() {
     for (const [host, height] of heights) {
       host.style.setProperty('--industry-world-height', `${height}px`);
     }
-  });
-  const visibility = new IntersectionObserver(entries => {
+  }
+  const resize = 'ResizeObserver' in window ? new ResizeObserver(measure) : null;
+  const visibility = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
     for (const entry of entries) {
       const state = states.get(entry.target);
       state.visible = entry.isIntersecting;
@@ -86,8 +100,8 @@ export function initIndustryWorlds() {
       state.product?.sync();
     }
     hydrate();
-  });
-  const preload = new IntersectionObserver(([entry]) => {
+  }) : null;
+  const preload = visibility && new IntersectionObserver(([entry]) => {
     near = entry.isIntersecting;
     hydrate();
   }, { rootMargin: '300px 0px' });
@@ -120,9 +134,9 @@ export function initIndustryWorlds() {
     state.timeline.to(state, { accent: 1, duration: duration - buildStart, ease: 'none' }, buildStart);
     states.set(card, state);
     heading.before(host);
-    resize.observe(card);
-    resize.observe(heading);
-    visibility.observe(card);
+    resize?.observe(card);
+    resize?.observe(heading);
+    visibility?.observe(card);
     card.addEventListener('pointerenter', event => {
       if (!touch.matches && event.pointerType === 'mouse') enter(state);
     }, { signal });
@@ -135,7 +149,13 @@ export function initIndustryWorlds() {
     }, { signal });
   });
 
-  preload.observe(section);
+  const unwatch = watchGraphics(() => { if (!permitted()) releaseStudio(); });
+  document.addEventListener('nexora:intro-finished', hydrate, { signal });
+  if (!resize) {
+    measure();
+    window.addEventListener('resize', measure, { signal });
+  }
+  preload?.observe(section);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && active) leave(active, true);
     else hydrate();
@@ -156,10 +176,11 @@ export function initIndustryWorlds() {
   }, { signal });
 
   return () => {
+    unwatch();
     listeners.abort();
-    preload.disconnect();
-    visibility.disconnect();
-    resize.disconnect();
+    preload?.disconnect();
+    visibility?.disconnect();
+    resize?.disconnect();
     studio?.dispose();
     for (const { card, host, timeline } of states.values()) {
       timeline.kill();

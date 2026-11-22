@@ -393,7 +393,6 @@ document.addEventListener("nexora:page-ready", () => {
         ".about-content",
         ".stats > div",
         ".service-card",
-        ".process-item",
         ".why-grid > div",
         ".values-grid > div",
         ".footer-grid > div",
@@ -403,7 +402,6 @@ document.addEventListener("nexora:page-ready", () => {
       // The About editorial reveal owns its text and statistics transforms.
       if (element.closest('#about') && element.matches('.about-content, .stats > div')) return;
       if (element.classList.contains('service-depth')) return;
-      if (element.matches('.process-journey .process-item')) return;
       if (element.matches('.why-typography .why-grid > div')) return;
       observer.observe(element);
     });
