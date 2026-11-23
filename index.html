@@ -8,6 +8,41 @@
       content="Meet Nexora, your end-to-end marketing and branding partner."
     />
     <title>One Partner. Every Marketing Need. | Nexora</title>
+    <style>
+      html.brand-intro-boot,
+      html.brand-intro-boot body.home-page { background: #06123c; }
+      html.brand-intro-boot #root { opacity: 0; }
+      .home-startup-fallback { display: none; }
+      html.brand-intro-expired #root:empty + .home-startup-fallback {
+        display: block;
+        position: fixed;
+        inset: 0;
+        padding: 3rem;
+        background: #06123c;
+        color: #fff;
+      }
+      .home-startup-fallback a { color: #efd59c; }
+    </style>
+    <script>
+      (() => {
+        if (location.hash || scrollY > 0 || matchMedia('(prefers-reduced-motion: reduce)').matches ||
+            !('IntersectionObserver' in window) || !('ResizeObserver' in window) ||
+            typeof document.createElement('dialog').showModal !== 'function') return;
+        try {
+          if (sessionStorage.getItem('nexora.brand-intro.v1')) return;
+        } catch {
+          return;
+        }
+        const classes = document.documentElement.classList;
+        classes.add('brand-intro-boot');
+        setTimeout(() => {
+          if (classes.contains('brand-intro-boot')) {
+            classes.remove('brand-intro-boot');
+            classes.add('brand-intro-expired');
+          }
+        }, 8000);
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,6 +60,11 @@
   </head>
   <body class="home-page">
     <div id="root"></div>
+    <div class="home-startup-fallback">
+      <h1>Nexora</h1>
+      <p>The home page is taking longer than expected.</p>
+      <a href="/services.html">Explore our services</a>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -62,19 +62,23 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
 
   function start() {
     if (preference.matches || failed || graphicsExhausted()) return;
-    const mobile = window.matchMedia('(max-width: 767px)').matches;
+    const mobileLayout = window.matchMedia('(max-width: 767.98px)');
+    const mobile = mobileLayout.matches;
     const initial = graphicsProfile();
     let profile = initial;
     const monitor = createGraphicsMonitor();
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: initial.antialias, powerPreference: 'default' });
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: initial.antialias || (mobile && initial.level === 'medium'),
+        powerPreference: 'default',
+      });
     } catch {
       host.classList.remove('ribbon-pending');
       intro?.fail();
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.dpr));
     renderer.setClearColor(0x06123c, 0);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = .95;
@@ -122,7 +126,7 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
     pmrem.dispose();
     const material = new THREE.MeshPhysicalMaterial({
       // Reflected studio light supplies depth; baked dark tints would blacken bevels.
-      color: '#D4AF37', vertexColors: false, metalness: 1, roughness: .15,
+      color: '#D4AF37', vertexColors: false, metalness: 1, roughness: mobile && initial.level !== 'low' ? .14 : .15,
       clearcoat: 0, envMapIntensity: 1.45, flatShading: false,
     });
     const wave = { time: { value: 0 }, amount: { value: 0 } };
@@ -151,7 +155,10 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
     fill.position.set(4, 1, 5);
     scene.add(key, rim, fill);
     const ribbons = Array.from({ length: mobile ? 2 : 3 }, (_, i) => {
-      const geometry = createRibbonGeometry(initial.level === 'low' ? 120 : initial.level === 'medium' ? 220 : 320, i);
+      const segments = mobile
+        ? { high: 320, medium: 256, low: 160 }[initial.level]
+        : { high: 320, medium: 220, low: 120 }[initial.level];
+      const geometry = createRibbonGeometry(segments, i);
       // Each frustum constraint is linear in the ribbon's vertices. Its
       // maximum is on the hull, so interior points cannot affect the framing.
       const positions = geometry.getAttribute('position');
@@ -206,14 +213,32 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       artworkBottom = bottom;
     }
     function resize() {
-      const { width, height } = layoutHost.getBoundingClientRect();
+      // Computed layout dimensions exclude the transient intro handoff transform.
+      const style = getComputedStyle(host);
+      const width = parseFloat(style.width), height = parseFloat(style.height);
       if (!width || !height) return;
+      const deviceRatio = window.devicePixelRatio || 1;
+      const mobileCap = { high: 2, medium: 1.65, low: 1 }[profile.level];
+      const pixelRatio = Math.min(deviceRatio, mobileLayout.matches ? mobileCap : profile.dpr);
+      if (width === viewportWidth && height === viewportHeight && pixelRatio === renderer.getPixelRatio()) return;
       viewportWidth = width; viewportHeight = height;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       baseDistance = Math.max(8.1, 3.05 / (Math.tan(THREE.MathUtils.degToRad(18)) * camera.aspect));
-      renderer.setSize(width, height, false);
+      renderer.setDrawingBufferSize(width, height, pixelRatio);
       positionTagline(width, height);
+      if (import.meta.env.DEV && mobileLayout.matches) {
+        const gl = renderer.getContext();
+        console.debug('[Nexora infinity] Drawing buffer', {
+          phase: intro?.active ? 'intro' : 'hero',
+          quality: profile.level,
+          cssSize: [width, height],
+          devicePixelRatio: deviceRatio,
+          renderPixelRatio: pixelRatio,
+          drawingBuffer: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+          antialias: gl.getContextAttributes()?.antialias,
+        });
+      }
     }
     resize();
     let entranceTimeline;
@@ -226,7 +251,7 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       });
       sequence.to(motion, { entrance: 1, duration: 2.96, ease: 'power2.inOut' }, 0);
       // Includes the final strand settling and the camera entrance: 2.96 seconds.
-      addTaglineEntrance(sequence, host, sequence.duration());
+      if (!intro?.active) addTaglineEntrance(sequence, host, sequence.duration());
       gsap.to(motion, { scroll: 1, ease: 'none', scrollTrigger: {
         trigger: hero, start: 'top top', end: 'bottom top', scrub: 1.2,
       } });
@@ -320,11 +345,16 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       playback();
     }
     const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(layoutHost);
+    resizeObserver.observe(host);
     const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; playback(); });
     observer.observe(layoutHost);
     document.addEventListener('visibilitychange', playback);
-    document.addEventListener('nexora:intro-finished', playback);
+    function finishIntro() {
+      resize();
+      playback();
+    }
+    window.addEventListener('resize', resize);
+    document.addEventListener('nexora:intro-finished', finishIntro);
     function fallback(error) {
       failed = true;
       teardown();
@@ -335,7 +365,7 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
     const unwatch = watchGraphics(() => {
       if (graphicsExhausted()) { fallback(); return; }
       profile = graphicsProfile();
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, profile.dpr));
+      resize();
     });
     teardown = () => {
       cancelAnimationFrame(frame);
@@ -344,7 +374,8 @@ export function initHero({ hero, host: layoutHost, artwork: host, intro }) {
       observer.disconnect();
       resizeObserver.disconnect();
       document.removeEventListener('visibilitychange', playback);
-      document.removeEventListener('nexora:intro-finished', playback);
+      window.removeEventListener('resize', resize);
+      document.removeEventListener('nexora:intro-finished', finishIntro);
       unguard();
       unwatch();
       ribbons.forEach(({ mesh }) => mesh.geometry.dispose());

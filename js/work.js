@@ -31,6 +31,35 @@
     enquiryTrigger?.focus();
   });
   enquiryForm.addEventListener("submit", (event) => event.preventDefault());
+  const videoDialog = document.getElementById("portfolio-video-dialog");
+  const videoPlayer = videoDialog.querySelector("video");
+  const videoTitle = document.getElementById("portfolio-video-title");
+  let videoTrigger;
+
+  document.querySelectorAll(".portfolio-video-trigger").forEach((button) => {
+    button.addEventListener("click", () => {
+      videoTrigger = button;
+      videoTitle.textContent = button.dataset.title;
+      videoDialog.showModal();
+      document.body.classList.add("enquiry-open");
+      videoPlayer.src = button.dataset.video;
+      videoPlayer.play().catch(() => {
+        // The native play control remains available if the browser blocks playback.
+      });
+    });
+  });
+
+  videoDialog.addEventListener("click", (event) => {
+    if (event.target === videoDialog) videoDialog.close();
+  });
+  videoDialog.addEventListener("close", () => {
+    videoPlayer.pause();
+    videoPlayer.removeAttribute("src");
+    videoPlayer.load();
+    document.body.classList.remove("enquiry-open");
+    videoTrigger?.focus();
+  });
+
   const filter = document.getElementById("work-service");
   const collections = [...document.querySelectorAll(".portfolio-collection")];
   const status = document.getElementById("work-status");
@@ -50,11 +79,11 @@
     let visibleCount = 0;
     collections.forEach((collection) => {
       collection.hidden = !showAll && collection.dataset.service !== filter.value;
+      // The photography and videography collection starts with three videos and three photos.
+      const previewLimit = { website: Infinity, video: 6 }[collection.dataset.service] ?? 4;
       collection.querySelectorAll(".portfolio-card").forEach((card, index) => {
-        card.hidden = collection.hidden || (showAll && collection.dataset.service !== "website" && index >= 4);
+        card.hidden = collection.hidden || (showAll && index >= previewLimit);
         if (!card.hidden) visibleCount += 1;
-        const video = card.querySelector("video");
-        if (video && card.hidden) video.pause();
       });
     });
     status.textContent = showAll

@@ -80,6 +80,7 @@ function initProcessTunnel(section, grid, items) {
   panel.append(viewport, meter); grid.before(route); route.append(panel, grid); section.classList.add('process-journey');
   const media = gsap.matchMedia();
   let disposed = false, corridor = null, loading = false, failed = false, visible = false, motionAllowed = false, cinematic = false, active = -1, epoch = 0;
+  let approaching = false, corridorModule;
   const state = { progress: 0 };
   function activate(index, animate) {
     if (index === active) return;
@@ -110,19 +111,30 @@ function initProcessTunnel(section, grid, items) {
     corridor = null;
   }
   function failCorridor(error) {
+    if (disposed || failed) return;
     failed = true;
     releaseCorridor();
     if (error instanceof Error) console.warn('Process journey using perspective fallback.', error);
   }
+  function loadCorridor() {
+    corridorModule ??= import('./process-corridor.js');
+    return corridorModule;
+  }
   function ensure() {
     if (!motionAllowed || !visible || document.hidden || disposed || corridor || loading || failed || !permitted()) return;
     loading = true; const token = epoch;
-    import('./process-corridor.js').then(({ mountProcessCorridor }) => {
+    loadCorridor().then(({ mountProcessCorridor }) => {
       loading = false;
       if (token !== epoch) { ensure(); return; }
       if (disposed || !motionAllowed || !visible || document.hidden || !permitted()) return;
       corridor = mountProcessCorridor(viewport, state.progress, active, failCorridor); corridor.setVisible(visible && !document.hidden); paint();
     }).catch(error => { loading = false; failCorridor(error); });
+  }
+  function prepareCorridor() {
+    if (approaching && motionAllowed && !document.hidden && !disposed && !failed && !corridorModule && permitted()) {
+      loadCorridor().catch(failCorridor);
+    }
+    ensure();
   }
   media.add({ desktop: '(min-width: 992px)', motion: '(prefers-reduced-motion: no-preference)' }, context => {
     motionAllowed = context.conditions.motion;
@@ -147,7 +159,7 @@ function initProcessTunnel(section, grid, items) {
         triggers.push(ScrollTrigger.create({ trigger: item, start: 'top 65%', end: 'bottom 35%', onEnter: select, onEnterBack: select }));
       });
     }
-    ensure();
+    prepareCorridor();
     paint();
     return () => {
       epoch++; motionAllowed = cinematic = false; travel?.scrollTrigger?.kill(); travel?.kill(); triggers.forEach(trigger => trigger.kill());
@@ -166,13 +178,19 @@ function initProcessTunnel(section, grid, items) {
     if (visible) { ensure(); paint(); }
   });
   observer.observe(viewport);
-  const visibility = () => { corridor?.setVisible(visible && !document.hidden); if (!document.hidden) { ensure(); paint(); } };
+  // Fetch the module while the visitor approaches. WebGL still starts in view.
+  const preloadObserver = new IntersectionObserver(([entry]) => {
+    approaching = entry.isIntersecting;
+    if (approaching) prepareCorridor();
+  }, { rootMargin: '1200px 0px' });
+  preloadObserver.observe(viewport);
+  const visibility = () => { corridor?.setVisible(visible && !document.hidden); if (!document.hidden) { prepareCorridor(); paint(); } };
   const unwatch = watchGraphics(() => { if (!permitted()) releaseCorridor(); });
-  document.addEventListener('nexora:intro-finished', ensure);
+  document.addEventListener('nexora:intro-finished', prepareCorridor);
   document.addEventListener('visibilitychange', visibility);
   return () => {
-    unwatch(); document.removeEventListener('nexora:intro-finished', ensure);
-    disposed = true; media.revert(); observer.disconnect(); document.removeEventListener('visibilitychange', visibility);
+    unwatch(); document.removeEventListener('nexora:intro-finished', prepareCorridor);
+    disposed = true; media.revert(); observer.disconnect(); preloadObserver.disconnect(); document.removeEventListener('visibilitychange', visibility);
     corridor?.dispose(); route.before(grid); route.remove(); section.classList.remove('process-journey', 'process-cinematic');
     items.forEach(item => { item.classList.remove('is-process-active'); item.removeAttribute('aria-current'); });
   };

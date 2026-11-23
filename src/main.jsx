@@ -26,7 +26,13 @@ const page = location.pathname.split('/').pop() || 'index.html';
 function SitePage({ markup }) {
   const content = useMemo(() => parse(markup), [markup]);
 
-  useLayoutEffect(() => loadHeroWhenVisible(), []);
+  useLayoutEffect(() => {
+    try {
+      return loadHeroWhenVisible();
+    } finally {
+      document.documentElement.classList.remove('brand-intro-boot');
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

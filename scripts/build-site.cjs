@@ -10,7 +10,7 @@ const path = require('node:path');
   for (const name of ['index.html', 'services.html', 'work.html', 'reviews.html', 'contact.html', 'css', 'js', 'images']) {
     await fs.cp(path.join(root, name), path.join(dest, name), {
       recursive: true,
-      filter: source => name !== 'images' || (!source.endsWith('.png') && !source.endsWith('.txt') && !source.endsWith('VTOP_Velesta_walkthrough.MOV.mp4')),
+      filter: source => name !== 'images' || !/\.(png|txt|jpe?g)$|[\\/](VTOP_Velesta_walkthrough\.MOV|apex reel 2|C5927)\.mp4$/i.test(source),
     });
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });

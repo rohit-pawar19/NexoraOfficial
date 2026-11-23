@@ -54,12 +54,12 @@
 .hero-artwork.ribbon-ready .hero-fallback { opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .hero-artwork-visible:not(.ribbon-ready) .hero-fallback { animation: hero-still-float 6s ease-in-out infinite; }
-  .brand-intro-lightweight .hero-artwork .hero-fallback { animation: hero-still-entrance 3.65s ease-out both; }
+  .brand-intro-lightweight .hero-artwork .hero-fallback { animation: hero-still-entrance 3.45s ease-out both; }
 }
 @keyframes hero-still-float {
   50% { transform: translate(-50%, calc(-50% - 4px)); }
 }
 @keyframes hero-still-entrance {
-  from { opacity: .24; transform: translate(-50%, -50%) scale(.92); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translate(-50%, -50%) scale(.92); }
+  to { opacity: 1; clip-path: inset(0); transform: translate(-50%, -50%) scale(1); }
 }

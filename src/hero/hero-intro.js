@@ -6,7 +6,8 @@ const sessionKey = 'nexora.brand-intro.v1';
 
 export function createHeroIntro(host, artwork, reduced) {
   // Keep direct links to sections and restored scroll positions unobstructed.
-  if (location.hash || window.scrollY > 0 || !('ResizeObserver' in window)) return;
+  if (location.hash || window.scrollY > 0 || !('ResizeObserver' in window) ||
+      document.documentElement.classList.contains('brand-intro-expired')) return;
   const dialog = document.createElement('dialog');
   if (typeof dialog.showModal !== 'function') return;
   try {
@@ -34,6 +35,7 @@ export function createHeroIntro(host, artwork, reduced) {
   const listeners = new AbortController();
   const { signal } = listeners;
   const progress = { value: 0 };
+  const mobile = matchMedia('(max-width: 767.98px)');
   let bounds;
   let sequence;
   let transition;
@@ -56,9 +58,16 @@ export function createHeroIntro(host, artwork, reduced) {
   stage.append(artwork);
 
   function position() {
-    const { left, top, scale, centerX, centerY } = bounds;
+    const { left, top, centerX, centerY, scaleFrom, scaleTo } = bounds;
     const p = progress.value;
-    stage.style.transform = `translate3d(${centerX + (left - centerX) * p}px, ${centerY + (top - centerY) * p}px, 0) scale(${scale + (1 - scale) * p})`;
+    stage.style.left = mobile.matches ? `${centerX}px` : '';
+    stage.style.top = mobile.matches ? `${centerY}px` : '';
+    if (mobile.matches) {
+      stage.style.transform = p === 0 ? '' :
+        `translate3d(${(left - centerX) * p}px, ${(top - centerY) * p}px, 0) scale(${1 + (scaleTo - 1) * p})`;
+    } else {
+      stage.style.transform = `translate3d(${centerX + (left - centerX) * p}px, ${centerY + (top - centerY) * p}px, 0) scale(${scaleFrom + (scaleTo - scaleFrom) * p})`;
+    }
   }
 
   function measure() {
@@ -66,12 +75,19 @@ export function createHeroIntro(host, artwork, reduced) {
     if (!width || !height) return;
     const frame = dialog.getBoundingClientRect();
     const scale = Math.min(1.32, (frame.width - 28) / width, frame.height * .79 / height);
-    stage.style.width = `${width}px`;
-    stage.style.height = `${height}px`;
+    if (scale <= 0) return;
+    // Give mobile artwork its displayed layout size during playback. The handoff
+    // reuses that surface until the artwork returns to the Hero.
+    stage.style.width = `${width * (mobile.matches ? scale : 1)}px`;
+    stage.style.height = `${height * (mobile.matches ? scale : 1)}px`;
+    const pixelRatio = window.devicePixelRatio || 1;
+    const snap = value => mobile.matches ? Math.round(value * pixelRatio) / pixelRatio : value;
     bounds = {
-      left: left - frame.left, top: top - frame.top, scale,
-      centerX: (frame.width - width * scale) / 2,
-      centerY: (frame.height - height * scale) / 2,
+      left: left - frame.left, top: top - frame.top,
+      scaleFrom: mobile.matches ? 1 : scale,
+      scaleTo: mobile.matches ? 1 / scale : 1,
+      centerX: snap((frame.width - width * scale) / 2),
+      centerY: snap((frame.height - height * scale) / 2),
     };
     position();
   }
@@ -128,11 +144,11 @@ export function createHeroIntro(host, artwork, reduced) {
       transition.to(stage, { opacity: 0, duration }, 0);
     }
     transition.to([backdrop, light, ripple, skip], { opacity: 0, duration, ease: 'power2.inOut' }, 0);
-    if (!completed && tagline) transition.to(tagline, { opacity: 1, clipPath: 'inset(0 0% 0 0)', duration: .2 }, 0);
   }
 
   function run(beginEntrance, entranceDuration) {
     if (!active || transition) { beginEntrance(); return; }
+    if (sequence) return;
     releaseEntrance = (speed = 1) => {
       releaseEntrance = undefined;
       beginEntrance(speed);
@@ -173,8 +189,9 @@ export function createHeroIntro(host, artwork, reduced) {
     get active() { return active; },
     finished, run,
     runLightweight() {
-      dialog.classList.add("brand-intro-lightweight");
-      run(() => {}, 3.45);
+      run(() => {
+        if (!transition) dialog.classList.add('brand-intro-lightweight');
+      }, 3.45);
     },
     fail: () => handoff(),
     dispose: () => finish(false),

@@ -35,7 +35,7 @@ module.exports = defineConfig({
         await mkdir(resolve(out, folder), { recursive: true });
         await cp(resolve(root, folder), resolve(out, folder), {
           recursive: true,
-          filter: source => folder !== 'images' || (!source.endsWith('.png') && !source.endsWith('.txt') && !source.endsWith('VTOP_Velesta_walkthrough.MOV.mp4')),
+          filter: source => folder !== 'images' || !/\.(png|txt|jpe?g)$|[\\/](VTOP_Velesta_walkthrough\.MOV|apex reel 2|C5927)\.mp4$/i.test(source),
         });
       }
     },
