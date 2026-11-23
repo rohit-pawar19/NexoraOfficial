@@ -26,10 +26,6 @@
   gap: var(--client-gap);
 }
 
-.client-motion:not(.client-entered) .portfolio-logo-grid {
-  opacity: 0;
-}
-
 .client-motion:not(.client-loop-ready) .portfolio-logo-grid[aria-hidden="true"] {
   visibility: hidden;
 }

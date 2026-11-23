@@ -1,4 +1,4 @@
-import { canRenderGraphics, graphicsProfile, watchGraphics } from '../motion/graphics-budget.js';
+import { canRenderGraphics, graphicsExhausted, graphicsProfile, watchGraphics } from '../motion/graphics-budget.js';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './process-journey.css';
@@ -80,7 +80,7 @@ function initProcessTunnel(section, grid, items) {
   panel.append(viewport, meter); grid.before(route); route.append(panel, grid); section.classList.add('process-journey');
   const media = gsap.matchMedia();
   let disposed = false, corridor = null, loading = false, failed = false, visible = false, motionAllowed = false, cinematic = false, active = -1, epoch = 0;
-  let approaching = false, corridorModule;
+  let approaching = false, corridorModule, layoutReady = false;
   const state = { progress: 0 };
   function activate(index, animate) {
     if (index === active) return;
@@ -98,8 +98,8 @@ function initProcessTunnel(section, grid, items) {
       });
     }
   }
-  function paint() {
-    activate(selectProcessStage(state.progress, active), cinematic && visible && !document.hidden);
+  function paint(animate = true, synchronize = false) {
+    activate(selectProcessStage(state.progress, synchronize ? -1 : active), animate && cinematic && visible && !document.hidden);
     fill.style.transform = `scaleX(${(.08 + state.progress * .92).toFixed(4)})`;
     if (visible && !document.hidden) corridor?.render(state.progress, active);
   }
@@ -121,49 +121,84 @@ function initProcessTunnel(section, grid, items) {
     return corridorModule;
   }
   function ensure() {
-    if (!motionAllowed || !visible || document.hidden || disposed || corridor || loading || failed || !permitted()) return;
+    if (!layoutReady || !motionAllowed || !visible || document.hidden || disposed || corridor || loading || failed || !permitted()) return;
     loading = true; const token = epoch;
     loadCorridor().then(({ mountProcessCorridor }) => {
       loading = false;
       if (token !== epoch) { ensure(); return; }
-      if (disposed || !motionAllowed || !visible || document.hidden || !permitted()) return;
-      corridor = mountProcessCorridor(viewport, state.progress, active, failCorridor); corridor.setVisible(visible && !document.hidden); paint();
+      if (disposed || !layoutReady || !motionAllowed || !visible || document.hidden || !permitted()) return;
+      corridor = mountProcessCorridor(viewport, state.progress, active, failCorridor);
+      corridor.setVisible(true);
     }).catch(error => { loading = false; failCorridor(error); });
   }
   function prepareCorridor() {
-    if (approaching && motionAllowed && !document.hidden && !disposed && !failed && !corridorModule && permitted()) {
-      loadCorridor().catch(failCorridor);
+    if (approaching && motionAllowed && !document.hidden && !disposed && !failed && !corridorModule &&
+        'ResizeObserver' in window && !graphicsExhausted()) {
+      const profile = graphicsProfile();
+      if (profile && profile.level !== 'low') loadCorridor().catch(failCorridor);
     }
     ensure();
   }
-  media.add({ desktop: '(min-width: 992px)', motion: '(prefers-reduced-motion: no-preference)' }, context => {
+  media.add({ all: 'all', desktop: '(min-width: 992px)', motion: '(prefers-reduced-motion: no-preference)' }, context => {
     motionAllowed = context.conditions.motion;
     cinematic = context.conditions.desktop && motionAllowed;
     section.classList.toggle('process-cinematic', cinematic);
     active = -1;
-    const triggers = [];
-    let travel;
-    if (cinematic) {
-      state.progress = 0;
-      // Native sticky positioning provides the viewing area. No pin, snap, wheel
-      // interception or programmatic scroll is used by this journey.
-      travel = gsap.to(state, { progress: 1, ease: 'none', onUpdate: paint, scrollTrigger: {
-        trigger: grid,
-        start: () => `top+=${items[0].offsetHeight / 2} 50%`,
-        end: () => `bottom-=${items[7].offsetHeight / 2} 50%`,
-        scrub: .85, invalidateOnRefresh: true,
-      } });
-    } else {
-      items.forEach((item, index) => {
-        const select = () => { state.progress = index / 7; paint(); };
-        triggers.push(ScrollTrigger.create({ trigger: item, start: 'top 65%', end: 'bottom 35%', onEnter: select, onEnterBack: select }));
-      });
+    state.progress = 0;
+    paint(false);
+    const events = new AbortController();
+    const { signal } = events;
+    let frame = 0, trigger, travel;
+    function refreshLayout() {
+      frame = 0;
+      if (document.documentElement.classList.contains('brand-intro-open') || !grid.offsetHeight) return;
+      if (!trigger) {
+        // Sticky CSS owns the panel. One trigger maps native scroll in both directions.
+        const anchor = cinematic ? '50%' : '65%';
+        travel = gsap.to(state, { progress: 1, ease: 'none', paused: true, onUpdate: () => paint(layoutReady) });
+        trigger = ScrollTrigger.create({
+          trigger: grid,
+          animation: travel,
+          start: () => `top+=${items[0].offsetHeight / 2} ${anchor}`,
+          end: () => `bottom-=${items.at(-1).offsetHeight / 2} ${anchor}`,
+          scrub: cinematic ? .85 : true,
+          onRefresh(self) {
+            // A refresh (including restored scroll) should start at the measured
+            // position, without replaying intermediate steps from stale progress.
+            self.getTween()?.pause();
+            self.animation.totalProgress(self.progress, true);
+            paint(false, true);
+          },
+        });
+      }
+      ScrollTrigger.refresh();
+      layoutReady = true;
+      prepareCorridor();
     }
-    prepareCorridor();
-    paint();
+    function scheduleRefresh() {
+      if (!signal.aborted && !frame) frame = requestAnimationFrame(refreshLayout);
+    }
+    const layoutObserver = 'ResizeObserver' in window ? new ResizeObserver(scheduleRefresh) : null;
+    layoutObserver?.observe(grid);
+    layoutObserver?.observe(section.closest('main') ?? section);
+    document.addEventListener('nexora:intro-finished', scheduleRefresh, { signal });
+    document.addEventListener('nexora:page-ready', scheduleRefresh, { signal });
+    document.fonts?.addEventListener('loadingdone', scheduleRefresh, { signal });
+    document.addEventListener('load', event => {
+      if (event.target instanceof HTMLImageElement &&
+          (event.target.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING)) scheduleRefresh();
+    }, { capture: true, signal });
+    window.addEventListener('pageshow', scheduleRefresh, { signal });
+    scheduleRefresh();
     return () => {
-      epoch++; motionAllowed = cinematic = false; travel?.scrollTrigger?.kill(); travel?.kill(); triggers.forEach(trigger => trigger.kill());
-      corridor?.dispose(); corridor = null;
+      events.abort();
+      layoutObserver?.disconnect();
+      cancelAnimationFrame(frame);
+      epoch++;
+      layoutReady = motionAllowed = cinematic = false;
+      trigger?.kill();
+      travel?.kill();
+      releaseCorridor();
       items.forEach(item => {
         const text = item.querySelectorAll('h3, p'); gsap.killTweensOf(text); gsap.set(text, { clearProps: 'transform,opacity' });
       });
@@ -171,11 +206,9 @@ function initProcessTunnel(section, grid, items) {
     };
   });
   const observer = new IntersectionObserver(([entry]) => {
-    const entering = !visible && entry.isIntersecting;
     visible = entry.isIntersecting;
+    if (visible) { paint(false); ensure(); }
     corridor?.setVisible(visible && !document.hidden);
-    if (entering) active = -1;
-    if (visible) { ensure(); paint(); }
   });
   observer.observe(viewport);
   // Fetch the module while the visitor approaches. WebGL still starts in view.
@@ -184,12 +217,14 @@ function initProcessTunnel(section, grid, items) {
     if (approaching) prepareCorridor();
   }, { rootMargin: '1200px 0px' });
   preloadObserver.observe(viewport);
-  const visibility = () => { corridor?.setVisible(visible && !document.hidden); if (!document.hidden) { prepareCorridor(); paint(); } };
+  const visibility = () => {
+    if (!document.hidden) { paint(false); prepareCorridor(); }
+    corridor?.setVisible(visible && !document.hidden);
+  };
   const unwatch = watchGraphics(() => { if (!permitted()) releaseCorridor(); });
-  document.addEventListener('nexora:intro-finished', prepareCorridor);
   document.addEventListener('visibilitychange', visibility);
   return () => {
-    unwatch(); document.removeEventListener('nexora:intro-finished', prepareCorridor);
+    unwatch();
     disposed = true; media.revert(); observer.disconnect(); preloadObserver.disconnect(); document.removeEventListener('visibilitychange', visibility);
     corridor?.dispose(); route.before(grid); route.remove(); section.classList.remove('process-journey', 'process-cinematic');
     items.forEach(item => { item.classList.remove('is-process-active'); item.removeAttribute('aria-current'); });

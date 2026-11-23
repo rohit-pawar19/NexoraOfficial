@@ -1,8 +1,5 @@
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './client-showcase.css';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const directions = [
   [-1, 0], [1, 0], [0, -1], [0, 1],
@@ -67,13 +64,14 @@ export function initClientShowcase() {
   const description = section.querySelector('.portfolio-heading p:last-child');
   const viewport = section.querySelector('.client-logo-viewport');
   const track = section.querySelector('.client-logo-track');
-  const grid = track.firstElementChild;
+  const grid = track?.firstElementChild;
+  if (!heading || !description || !viewport || !grid?.children.length) return () => {};
   const cards = [...grid.children];
   const media = gsap.matchMedia();
   let entered = false;
 
   media.add('(prefers-reduced-motion: no-preference)', () => {
-    if (!('ResizeObserver' in window)) return;
+    if (!('ResizeObserver' in window) || !('IntersectionObserver' in window)) return;
     const listeners = new AbortController();
     const { signal } = listeners;
     const repeatedGrid = grid.cloneNode(true);
@@ -89,6 +87,7 @@ export function initClientShowcase() {
     let width = 0;
     let visible = false;
     let ready = entered;
+    let logosReady = entered;
     let hovering = false;
     let focused = false;
     let playing = false;
@@ -101,6 +100,7 @@ export function initClientShowcase() {
 
     function measure() {
       width = grid.getBoundingClientRect().width;
+      startEntrance();
       syncLoop();
     }
 
@@ -123,7 +123,8 @@ export function initClientShowcase() {
     measure();
 
     function startEntrance() {
-      if (ready || entrance) return;
+      if (ready || entrance || !visible || document.hidden || !logosReady ||
+          !width || !viewport.clientHeight) return;
       entrance = createEntrance(heading, description, viewport, cards, () => {
         entered = true;
         ready = true;
@@ -133,22 +134,31 @@ export function initClientShowcase() {
       entrance.eventCallback('onStart', () => section.classList.add('client-entered')).play();
     }
 
-    function updatePresence({ isActive }) {
-      visible = isActive;
-      if (visible) startEntrance();
+    function updatePlayback() {
+      startEntrance();
+      if (!ready) entrance?.paused(!visible || document.hidden);
       syncLoop();
     }
 
     if (ready) section.classList.add('client-entered', 'client-loop-ready');
-    const presence = ScrollTrigger.create({
-      trigger: section,
-      start: 'top bottom',
-      end: 'bottom top',
-      onToggle: updatePresence,
-      onRefresh: updatePresence,
+    const presence = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      updatePlayback();
     });
-    updatePresence(presence);
-    document.addEventListener('visibilitychange', syncLoop, { signal });
+    presence.observe(viewport);
+    const preload = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      preload.disconnect();
+      const logos = [...grid.querySelectorAll('img')];
+      logos.forEach(image => { image.loading = 'eager'; });
+      Promise.allSettled(logos.map(image => image.decode?.())).then(() => {
+        if (signal.aborted) return;
+        logosReady = true;
+        updatePlayback();
+      });
+    }, { rootMargin: '800px 0px' });
+    if (!logosReady) preload.observe(viewport);
+    document.addEventListener('visibilitychange', updatePlayback, { signal });
 
     viewport.addEventListener('pointerenter', (event) => {
       hovering = event.pointerType === 'mouse';
@@ -190,7 +200,8 @@ export function initClientShowcase() {
     return () => {
       listeners.abort();
       resize.disconnect();
-      presence.kill();
+      presence.disconnect();
+      preload.disconnect();
       entrance?.revert();
       gsap.ticker.remove(tick);
       gsap.set(track, { clearProps: 'transform' });

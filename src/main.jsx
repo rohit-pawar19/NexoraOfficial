@@ -51,6 +51,10 @@ function SitePage({ markup }) {
     const disposeContactFooter = initContactFooterMotion();
     const disposeLiquidGold = initLiquidGold();
     const disposeMotion = initSiteMotion();
+    if (page === 'index.html' && ['#about', '#process'].includes(location.hash) &&
+        performance.getEntriesByType('navigation')[0]?.type === 'navigate') {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'instant' });
+    }
     if (page === 'work.html') {
       import('./work/spatial-gallery.js').then(({ initSpatialGallery }) => {
         if (!cancelled) disposeGallery = initSpatialGallery();
